@@ -1,9 +1,10 @@
-# @zaal/cli
+# zaal
 
 The `zaal` command: compile `.zaal` sources into a React app, preview it, rebuild on change.
 
 ```
-npm install -D @zaal/cli
+npm i -g zaal       # the command, anywhere
+npm i -D zaal       # or per project, via `npx zaal`
 ```
 
 ```
@@ -19,5 +20,9 @@ standalone React app with its own `package.json`, `vite.config.js`, `index.html`
 which is the folder to commit, install and deploy. `zaal dev` previews it without installing
 anything, from `.zaal-dev/`, and leaves `application/` untouched.
 
-The language is **[SPEC.md](https://github.com/YOUR-USERNAME/zaal/blob/main/SPEC.md)**. The compiler is [`@zaal/core`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/core) plus a
-target — [`@zaal/react`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/react) today.
+Installing this pulls down everything it needs:
+[`@zaal/react`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/react) (the target),
+[`@zaal/web`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/web) (the design system
+and app model) and [`@zaal/core`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/core)
+(the language). The language itself is
+**[SPEC.md](https://github.com/YOUR-USERNAME/zaal/blob/main/SPEC.md)**.

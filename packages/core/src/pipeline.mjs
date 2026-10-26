@@ -8,14 +8,19 @@ import { watch } from 'node:fs';
 import { basename, dirname, join, extname, resolve, sep } from 'node:path';
 import { SRC_DIR, APP_FILE, OUT_SRC, OUT_CSS, posix } from './layout.mjs';
 import { fail, inFile } from './diagnostics.mjs';
-import { parseApp } from './app.mjs';
-import { parseUI, uiCss } from './ui.mjs';
 import { syncDeps } from './deps.mjs';
 import { warn, pkgLine } from './log.mjs';
 
 // app.zaal, the design system and every block in zaal/ — the context a source file compiles
 // against. Shared, so compiling one file alone means exactly what compiling the app means.
-function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR } = {}) {
+//
+// `parseApp` and `parseUI` are injected rather than imported: what an app declaration and a
+// design system *are* belongs to the layer above (@zaal/web, for a frontend target), so that a
+// target compiling to something other than a web page is not forced to have either.
+function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR, parseApp, parseUI } = {}) {
+  if (!parseApp || !parseUI) {
+    throw new Error('project: needs `parseApp` and `parseUI` — a web target passes @zaal/web\'s');
+  }
   if (!existsSync(join(root, appFile))) {
     // Point at the layout, rather than leaving an ENOENT to be decoded. An earlier Zaal kept
     // sources in src/ with app.zaal at the root, so name the move when either is what is there.
@@ -73,7 +78,8 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
       + ` ${framework.name} has ${Object.keys(framework.backends).join(', ')}`);
   }
   const { ext, outDir } = be;
-  const { app, appSrc, ui, sources, stores, comps, clashes } = project({ root, appFile, srcDir });
+  const { app, appSrc, ui, sources, stores, comps, clashes } =
+    project({ root, appFile, srcDir, parseApp: framework.parseApp, parseUI: framework.parseUI });
   const made = [], used = new Map(), pkgs = new Map(), assets = new Set();
   inFile(appSrc, appFile, () => { for (const r of app.routes) {
     const c = comps.get(r.component);
@@ -109,7 +115,7 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
   }
   files.set(`${OUT_SRC}/main${ext}`, inFile(appSrc, appFile, () => framework.mainFile(app, backend, stores, comps)));
   files.set('index.html', framework.html(app, backend, pkgs));
-  if (ui) files.set(`${OUT_CSS}/ui.css`, uiCss(ui));
+  if (ui) files.set(`${OUT_CSS}/ui.css`, framework.uiCss(ui));
   mkdirSync(join(root, outDir), { recursive: true });
   // The esm preview is served straight from disk and installs nothing, so it needs no project
   // files; `application/` is the one a developer runs, builds and commits.

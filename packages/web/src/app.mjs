@@ -1,9 +1,6 @@
 // app.zaal: the routes, the title, the design system, the package pins. An app declaration
 // says what the app *is*, not what it compiles to, so none of this is target-specific.
-import { parse } from './parse.mjs';
-import { fail } from './diagnostics.mjs';
-import { splitSpec, CDN } from './deps.mjs';
-import { SRC_DIR } from './layout.mjs';
+import { parse, fail, splitSpec, CDN, SRC_DIR } from '@zaal/core';
 
 function parseApp(src) {
   const node = parse(src).kids.find(n => n.kind === 'app');

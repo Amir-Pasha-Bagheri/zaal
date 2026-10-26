@@ -26,18 +26,36 @@ export default function Counter() {
 
 ## Packages
 
-The language is one thing and the framework it targets is another. `@zaal/core` owns the grammar,
-the `ui.zaal` design system and the build pipeline; a target package owns the code generation.
+The language is one thing, the framework it targets is another, and the kind of thing it builds
+is a third. They are layered so that each can grow without the others: `@zaal/core` is the
+language, `@zaal/web` is what every *web* target shares, and a target package owns the code
+generation.
 
 | Package | What it is |
 | --- | --- |
-| [`@zaal/core`](packages/core) | The language: lexer, parser, design system, build pipeline. No framework of its own. |
+| [`zaal`](packages/cli) | The `zaal` command — build, preview, live-reload. **This is the one you install.** |
 | [`@zaal/react`](packages/react) | The React target. Two backends: `jsx` for a bundler, `esm` for a zero-install preview. |
-| [`@zaal/cli`](packages/cli) | The `zaal` command — build, preview, live-reload. |
+| [`@zaal/web`](packages/web) | The web layer every frontend target shares: the `ui.zaal` design system, the `app.zaal` project model. |
+| [`@zaal/core`](packages/core) | The language: lexer, parser, expressions, diagnostics, build pipeline. No framework, no CSS, no routing. |
 
-Targets for other frameworks are the next step, and the seam is already there: a target is an
-object that says which backends it has and how it writes each file of the output. `@zaal/core`'s
-`build` asks it those questions and never names React.
+```
+npm i -g zaal       # or: npm i -D zaal
+zaal build
+```
+
+Each layer depends only on the one below it:
+
+```
+zaal          the command
+  └─ @zaal/react      React codegen     ← @zaal/next, @zaal/vue, @zaal/angular join here
+       └─ @zaal/web   design system + app model   ← every *web* target shares this
+            └─ @zaal/core   the language    ← a backend or non-JS target starts here instead
+```
+
+A target is an object that says which backends it has and how it writes each file of the output.
+`@zaal/core`'s `build` asks it those questions and never names React — or CSS, or routing, which
+is why a target that compiles to a backend service, or to Python or .NET, can sit beside
+`@zaal/web` rather than underneath it.
 
 ## Getting started
 

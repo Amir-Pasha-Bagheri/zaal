@@ -1,7 +1,7 @@
 {
-  "name": "@zaal/cli",
+  "name": "zaal",
   "version": "0.1.0",
-  "description": "The `zaal` command: build, preview and live-reload a Zaal project.",
+  "description": "The `zaal` command: compile .zaal sources into a React app, preview it, rebuild on change.",
   "keywords": [
     "zaal",
     "cli"
@@ -20,7 +20,8 @@
   ],
   "dependencies": {
     "@zaal/core": "^0.1.0",
-    "@zaal/react": "^0.1.0"
+    "@zaal/react": "^0.1.0",
+    "@zaal/web": "^0.1.0"
   },
   "publishConfig": {
     "access": "public"

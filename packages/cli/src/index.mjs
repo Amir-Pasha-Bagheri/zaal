@@ -3,8 +3,8 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { basename, join } from 'node:path';
-import { project, serve, inFile, warn, pkgLine, APP_FILE } from '@zaal/core';
-import react, { build, watchAndServe, compile } from '@zaal/react';
+import { serve, inFile, warn, pkgLine, APP_FILE } from '@zaal/core';
+import react, { build, watchAndServe, compile, project } from '@zaal/react';
 
 // Which of the app's packages are not unpacked in the app's node_modules yet.
 const notInstalled = (dir, pkgs) => [...pkgs.values()].filter(p => !existsSync(join(dir, 'node_modules', p.pkg)));

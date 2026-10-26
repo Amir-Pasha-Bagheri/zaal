@@ -5,9 +5,10 @@ npm install                # links the workspace packages and puts `zaal` on the
 cd example && npx zaal dev # preview + live reload on http://localhost:5173
 npm test                   # the compiler's own suite (no dependencies)
 ```
-The compiler has no dependencies. It is `@zaal/core` — this document's grammar, the `ui.zaal`
-design system and the build pipeline — plus one target package that generates the code:
-`@zaal/react` today. A Zaal **project** is two directories — `zaal/`, which
+The compiler has no dependencies. It is layered: `@zaal/core` is this document's grammar and the
+build pipeline, `@zaal/web` the `ui.zaal` design system and the `app.zaal` project model, and a
+target package generates the code — `@zaal/react` today. The `zaal` command ties them together.
+A Zaal **project** is two directories — `zaal/`, which
 is everything hand-written, and `application/`, which `zaal build` writes — and `example/` is one.
 Every command runs in the project directory.
 
