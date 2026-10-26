@@ -1,0 +1,15 @@
+import Nav from '../components/Nav.jsx';
+import Panel from '../components/Panel.jsx';
+import { Link } from '../router.jsx';
+
+export default function About() {
+  return (
+    <main className="page">
+      <Nav />
+      <Panel title="About" actions={<Link to="/">back home</Link>}>
+        <p>Components live in .zal files; the look lives in ui.zal.</p>
+        <p>Nest by indentation; {'{'}children{'}'} renders whatever the caller nested.</p>
+      </Panel>
+    </main>
+  );
+}

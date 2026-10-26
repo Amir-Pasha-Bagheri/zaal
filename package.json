@@ -1,0 +1,20 @@
+{
+  "name": "zal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A token-dense DSL that compiles to a runnable React app.",
+  "bin": {
+    "zal": "./bin/zal"
+  },
+  "files": [
+    "zal.mjs",
+    "bin/zal",
+    "SPEC.md"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "demo": "cd example && node ../zal.mjs dev",
+    "demo:build": "cd example && node ../zal.mjs build"
+  }
+}

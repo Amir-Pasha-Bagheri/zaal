@@ -1,0 +1,11 @@
+import { useMemo } from 'react';
+
+export default function Sparkline({ points = [], w = 240, h = 48 }) {
+  const max = useMemo(() => Math.max(1, ...points), [points]);
+  const d = useMemo(() => points.map((v, i) => `${(i / Math.max(1, points.length - 1)) * w},${h - (v / max) * h}`).join(" "), [points, w, h, max]);
+  return (
+    <svg className="spark" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img">
+      <polyline points={d} fill="none" stroke="currentColor" strokeWidth={2} />
+    </svg>
+  );
+}

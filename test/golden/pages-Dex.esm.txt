@@ -1,0 +1,23 @@
+import { useState, useEffect, useMemo, useCallback, createElement as h, Fragment as F } from 'react';
+import Nav from '../components/Nav.js';
+import Field from '../components/Field.js';
+import Spinner from '../components/Spinner.js';
+import Badge from '../components/Badge.js';
+import { FALLBACK, API, art } from '../data/dex.js';
+import { useCaught } from '../stores/Caught.js';
+import { Link } from '../router.js';
+
+export default function Dex() {
+  const [q, setQ] = useState("");
+  const [list, setList] = useState([]);
+  const [status, setStatus] = useState("loading");
+  const { has, toggle } = useCaught();
+  const load = useCallback((signal) => { setStatus("loading"); fetch(`${API}?limit=24`, { signal }).then(r => r.json()).then(d => { setList(d.results); setStatus("live") }).catch(e => { if (e.name === "AbortError") return; setList(FALLBACK); setStatus("offline") }) }, []);
+  useEffect(() => {
+    const ctrl = new AbortController();
+    load(ctrl.signal);
+    return () => ctrl.abort();
+  }, []);
+  const shown = useMemo(() => list.filter(p => p.name.includes(q.trim().toLowerCase())), [q, list]);
+  return h("main", { "className": "page" }, h(Nav, null), h("h1", null, `Pokédex`), h("form", { "className": "row search" }, h(Field, { "label": "search", "value": q, "onInput": (e) => setQ(e.target.value), "placeholder": "pika…" })), status == "loading" ? h(Spinner, { "label": "asking the API…" }) : !shown.length ? h("p", { "className": "hint" }, `nothing matches “${q}”`) : h("div", { "className": "grid" }, shown.map((p, i) => h("div", { key: p.name, "className": "tile" }, h(Link, { "to": `/dex/${p.name}` }, h("img", { "className": "sprite", "src": art(p.name), "alt": p.name, "loading": "lazy" }), h("span", null, p.name)), h("button", { "className": "btn icon", "onClick": () => toggle(p.name), "title": "catch" }, has(p.name) ? "★" : "☆")))), status == "offline" ? h(Badge, { "text": "offline — showing bundled data" }) : null);
+}

@@ -1,0 +1,35 @@
+i Nav ../components/Nav
+i Oops ../components/Oops
+i Boom ../components/Boom
+i Sparkline ../components/Sparkline lazy
+i { motion } from framer-motion
+i { API, art } from ../data/dex
+C Pokemon p:name s:data=null s:status="loading" s:boom=false
+  use { has, toggle } = Caught
+  cb load() = setStatus("loading"); fetch("{API}/{name}").then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => { setData(d); setStatus("ready") }).catch(e => { setData(null); setStatus("{e}") })
+  fx load()
+  memo stats = data ? data.stats.map(s => s.base_stat) : []
+  %page
+    Nav
+    %row.back
+      %btn @click=go("/dex") "← back"
+      %btn.primary @click=toggle(name) "{has(name) ? "release" : "catch"} {name}"
+    motion.div.sheet initial={opacity:0,y:8} animate={opacity:1,y:0}
+      h1 "{name}"
+      ?status == "loading"
+        %hint "loading…"
+      :?status == "ready"
+        %card
+          img.sprite.big src=art(name) alt=name
+          %list
+            *data.stats as s k=s.stat.name
+              %item
+                span "{s.stat.name}"
+                b "{s.base_stat}"
+          Suspense fallback={null}
+            Sparkline points=stats
+      :
+        %hint "could not load {name} ({status})"
+    Oops title="that one blew up" onReset=()=>setBoom(false)
+      Boom go=boom
+    %btn.icon @click=boom=true title="throw" "explode"

@@ -1,0 +1,33 @@
+i Nav ../components/Nav
+i Sparkline ../components/Sparkline
+C Stats
+  use { items, left } = Todos
+  use { ids, total } = Caught
+  use useDebugValue(total)
+  memo done = items.length - left
+  memo bars = [items.length, left, done, total]
+  %page
+    Nav
+    h1 "Stats"
+    %grid
+      %tile
+        h2 "{items.length}"
+        %hint "todos"
+      %tile
+        h2 "{left}"
+        %hint "open"
+      %tile
+        h2 "{done}"
+        %hint "done"
+      %tile
+        h2 "{total}"
+        %hint "caught"
+    %card
+      Sparkline points=bars w=320
+      ?total
+        %list
+          *ids as n k=n
+            %item
+              span "{n}"
+      :
+        %hint "catch something in the Pokédex"

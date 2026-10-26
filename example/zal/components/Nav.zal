@@ -1,0 +1,15 @@
+// every page wears the same nav: one component instead of five copies of the markup
+i logo ../img/logo.png
+C Nav
+  use { mode, toggle } = Theme
+  use { total } = Caught
+  %nav
+    img.mark src=logo alt="Zal" width=22 height=22
+    Link to="/" "Home"
+    Link to="/dex" "Pokédex"
+    Link to="/stats" "Stats"
+    Link to="/about" "About"
+    %spacer
+    ?total
+      %pill "{total} caught"
+    %btn.icon @click=toggle title="theme" "{mode == "dark" ? "☀" : "☾"}"

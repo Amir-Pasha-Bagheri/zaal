@@ -1,0 +1,32 @@
+i Nav ../components/Nav
+i Field ../components/Field
+i Spinner ../components/Spinner
+i Badge ../components/Badge
+i { FALLBACK, API, art } from ../data/dex
+C Dex s:q="" s:list=[] s:status="loading"
+  use { has, toggle } = Caught
+  cb load(signal) = setStatus("loading"); fetch("{API}?limit=24", { signal }).then(r => r.json()).then(d => { setList(d.results); setStatus("live") }).catch(e => { if (e.name === "AbortError") return; setList(FALLBACK); setStatus("offline") })
+  fx!
+    const ctrl = new AbortController()
+    load(ctrl.signal)
+    off ctrl.abort()
+  memo shown = list.filter(p => p.name.includes(q.trim().toLowerCase()))
+  %page
+    Nav
+    h1 "Pokédex"
+    %row.search
+      Field label="search" val=q @input=q=e.target.value placeholder="pika…"
+    ?status == "loading"
+      Spinner label="asking the API…"
+    :?!shown.length
+      %hint "nothing matches “{q}”"
+    :
+      %grid
+        *shown as p k=p.name
+          %tile
+            Link to="/dex/{p.name}"
+              img.sprite src=art(p.name) alt=p.name loading="lazy"
+              span "{p.name}"
+            %btn.icon @click=toggle(p.name) title="catch" "{has(p.name) ? "★" : "☆"}"
+    ?status == "offline"
+      Badge text="offline — showing bundled data"

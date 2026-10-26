@@ -1,0 +1,26 @@
+import { useState, useEffect, useMemo, useCallback, useContext, createContext } from 'react';
+
+const KEY = "zal:caught";
+const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } })();
+
+export const CaughtContext = createContext(null);
+
+export function CaughtProvider({ children }) {
+  const [ids, setIds] = useState(saved.ids ?? []);
+  const total = useMemo(() => ids.length, [ids]);
+  const toggle = useCallback((name) => setIds(ids.includes(name) ? ids.filter(n => n !== name) : [...ids, name]), [ids]);
+  const has = useCallback((name) => ids.includes(name), [ids]);
+  useEffect(() => {
+    try { localStorage.setItem(KEY, JSON.stringify({ ids })); } catch {}
+  }, [ids]);
+  const value = useMemo(() => ({ ids, setIds, total, toggle, has }), [ids, total, toggle, has]);
+  return <CaughtContext.Provider value={value}>{children}</CaughtContext.Provider>;
+}
+
+export function useCaught() {
+  const value = useContext(CaughtContext);
+  if (!value) throw new Error('useCaught() used outside <CaughtProvider>');
+  return value;
+}
+
+export default useCaught;

@@ -1,0 +1,4 @@
+C Item p:todo p:onRemove
+  %item
+    span "{todo.text}"
+    %btn.icon @click=onRemove "x"

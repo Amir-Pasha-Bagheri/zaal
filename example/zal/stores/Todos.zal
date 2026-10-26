@@ -1,0 +1,5 @@
+// the todo list itself, shared by every screen that shows it
+S Todos persist s:items=[]
+  memo left = items.filter(t => !t.done).length
+  cb add(text) = items=[...items,{id:Date.now(),text}]
+  cb drop(id) = items=items.filter(t => t.id !== id)

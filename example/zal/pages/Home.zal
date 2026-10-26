@@ -1,0 +1,10 @@
+i Nav ../components/Nav
+i Counter ../components/Counter
+i TodoList ../components/TodoList
+C Home
+  use { left } = Todos
+  %page
+    Nav
+    h1 "Built with Zal — {left} open"
+    Counter label="Clicks" step=2
+    TodoList title="Todo"

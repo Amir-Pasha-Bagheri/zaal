@@ -1,0 +1,13 @@
+export const FALLBACK = [
+{ name: "bulbasaur" },
+{ name: "charmander" },
+{ name: "squirtle" },
+{ name: "pikachu" },
+{ name: "jigglypuff" },
+{ name: "meowth" },
+{ name: "psyduck" },
+{ name: "machop" },
+];
+export const API = "https://pokeapi.co/api/v2/pokemon";
+export const art = name =>
+`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/dream-world/${name}.svg`;

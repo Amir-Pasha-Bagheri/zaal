@@ -1,0 +1,6 @@
+// `...rest` with nothing of that name in scope makes it the rest prop: every other attribute
+// the caller writes lands on the input, no `p:` line each.
+C Field p:label
+  %field
+    span "{label}"
+    input ...rest

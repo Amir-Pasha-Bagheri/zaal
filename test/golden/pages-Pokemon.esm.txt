@@ -1,0 +1,22 @@
+import { lazy, Suspense, useState, useEffect, useMemo, useCallback, createElement as h, Fragment as F } from 'react';
+import Nav from '../components/Nav.js';
+import Oops from '../components/Oops.js';
+import Boom from '../components/Boom.js';
+const Sparkline = lazy(() => import('../components/Sparkline.js'));
+import { motion } from 'framer-motion';
+import { API, art } from '../data/dex.js';
+import { useCaught } from '../stores/Caught.js';
+import { go } from '../router.js';
+
+export default function Pokemon({ name }) {
+  const [data, setData] = useState(null);
+  const [status, setStatus] = useState("loading");
+  const [boom, setBoom] = useState(false);
+  const { has, toggle } = useCaught();
+  const load = useCallback(() => { setStatus("loading"); fetch(`${API}/${name}`).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => { setData(d); setStatus("ready") }).catch(e => { setData(null); setStatus(e) }) }, [name]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  const stats = useMemo(() => data ? data.stats.map(s => s.base_stat) : [], [data]);
+  return h("main", { "className": "page" }, h(Nav, null), h("form", { "className": "row back" }, h("button", { "className": "btn", "onClick": () => go("/dex") }, `← back`), h("button", { "className": "btn primary", "onClick": () => toggle(name) }, `${has(name) ? "release" : "catch"} ${name}`)), h(motion.div, { "className": "sheet", "initial": {opacity:0,y:8}, "animate": {opacity:1,y:0} }, h("h1", null, name), status == "loading" ? h("p", { "className": "hint" }, `loading…`) : status == "ready" ? h("section", { "className": "card" }, h("img", { "className": "sprite big", "src": art(name), "alt": name }), h("ul", { "className": "list" }, data.stats.map((s, i) => h("li", { key: s.stat.name, "className": "item" }, h("span", null, s.stat.name), h("b", null, s.base_stat)))), h(Suspense, { "fallback": null }, h(Sparkline, { "points": stats }))) : h("p", { "className": "hint" }, `could not load ${name} (${status})`)), h(Oops, { "title": "that one blew up", "onReset": ()=>setBoom(false) }, h(Boom, { "go": boom })), h("button", { "className": "btn icon", "onClick": () => setBoom(true), "title": "throw" }, `explode`));
+}

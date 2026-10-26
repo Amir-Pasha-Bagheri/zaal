@@ -1,0 +1,11 @@
+import { useState, useEffect, useCallback, createElement as h, Fragment as F } from 'react';
+import confetti from 'canvas-confetti';
+
+export default function Counter({ label = "Count", step = 1 }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    document.title = `${label}: ${n}`;
+  }, [label, n]);
+  const bump = useCallback((by) => { setN(n + (by)); confetti() }, [n]);
+  return h("div", { "className": "counter" }, h("h2", null, `${label}: ${n}`), h("button", { "className": "btn primary", "onClick": () => bump(step) }, `+`), h("button", { "className": "btn", "onClick": () => setN(n - (step)) }, `-`), n>0 ? h("p", { "className": "hint" }, `keep going`) : h("p", { "className": "hint" }, `click +`));
+}

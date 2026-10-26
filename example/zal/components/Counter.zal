@@ -1,0 +1,12 @@
+i confetti canvas-confetti
+C Counter p:label="Count" p:step=1 s:n=0
+  fx document.title = "{label}: {n}"
+  cb bump(by) = n+=by; confetti()
+  %counter
+    h2 "{label}: {n}"
+    %btn.primary @click=bump(step) "+"
+    %btn @click=n-=step "-"
+    ?n>0
+      %hint "keep going"
+    :
+      %hint "click +"

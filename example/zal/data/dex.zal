@@ -1,0 +1,15 @@
+// A plain data module: a .zal file of `js` lines compiles to exactly those lines. Used when the
+// network is not there, so the app still renders something real.
+js export const FALLBACK = [
+  { name: "bulbasaur" },
+  { name: "charmander" },
+  { name: "squirtle" },
+  { name: "pikachu" },
+  { name: "jigglypuff" },
+  { name: "meowth" },
+  { name: "psyduck" },
+  { name: "machop" },
+  ];
+js export const API = "https://pokeapi.co/api/v2/pokemon";
+js export const art = name =>
+  `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/dream-world/${name}.svg`;

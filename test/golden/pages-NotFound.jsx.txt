@@ -1,0 +1,14 @@
+import Nav from '../components/Nav.jsx';
+import { Link, useRoute } from '../router.jsx';
+
+export default function NotFound() {
+  const path = useRoute();
+  return (
+    <main className="page">
+      <Nav />
+      <h1>404</h1>
+      <p className="hint">no route for {path}</p>
+      <Link to="/">go home</Link>
+    </main>
+  );
+}

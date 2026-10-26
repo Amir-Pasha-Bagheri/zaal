@@ -1,0 +1,4 @@
+C Spinner p:label="loading…"
+  %loading
+    %spin
+    %hint "{label}"

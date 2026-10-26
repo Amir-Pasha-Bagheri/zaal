@@ -1,0 +1,31 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import Item from './Item.jsx';
+import { useTodos } from '../stores/Todos.jsx';
+
+export default function TodoList({ title = "Todo" }) {
+  const [draft, setDraft] = useState("");
+  const { items, left, add, drop } = useTodos();
+  const box = useRef(null);
+  useEffect(() => {
+    box.current?.focus();
+  }, []);
+  const submit = useCallback((e) => { e.preventDefault(); add(draft); setDraft("") }, [draft, add]);
+  return (
+    <section className="card">
+      <h2>{title} ({left})</h2>
+      <form className="row" onSubmit={submit}>
+        <input value={draft} onInput={(e) => setDraft(e.target.value)} placeholder="what next?" ref={box} />
+        <button className="btn primary" type="submit">add</button>
+      </form>
+      {items.length ? (
+        <ul className="list">
+          {items.map((t, i) => (
+            <Item key={t.id} todo={t} onRemove={()=>drop(t.id)} />
+          ))}
+        </ul>
+      ) : (
+        <p className="hint">nothing yet</p>
+      )}
+    </section>
+  );
+}

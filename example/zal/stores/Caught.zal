@@ -1,0 +1,5 @@
+// which pokemon the visitor has caught — persisted, and read by three different screens
+S Caught persist s:ids=[]
+  memo total = ids.length
+  cb toggle(name) = ids = ids.includes(name) ? ids.filter(n => n !== name) : [...ids, name]
+  cb has(name) = ids.includes(name)

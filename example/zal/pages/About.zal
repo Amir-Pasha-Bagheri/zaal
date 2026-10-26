@@ -1,0 +1,10 @@
+i Nav ../components/Nav
+i Panel ../components/Panel
+C About
+  %page
+    Nav
+    Panel title="About"
+      slot actions
+        Link to="/" "back home"
+      p "Components live in .zal files; the look lives in ui.zal."
+      p "Nest by indentation; \{children\} renders whatever the caller nested."

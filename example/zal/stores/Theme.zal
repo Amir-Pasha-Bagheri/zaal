@@ -1,0 +1,4 @@
+// global, persisted across reloads: the live colour scheme
+S Theme persist s:mode="light"
+  cb toggle() = mode = mode == "dark" ? "light" : "dark"
+  fx document.documentElement.dataset.theme = mode

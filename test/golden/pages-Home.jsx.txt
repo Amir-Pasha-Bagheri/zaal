@@ -1,0 +1,16 @@
+import Nav from '../components/Nav.jsx';
+import Counter from '../components/Counter.jsx';
+import TodoList from '../components/TodoList.jsx';
+import { useTodos } from '../stores/Todos.jsx';
+
+export default function Home() {
+  const { left } = useTodos();
+  return (
+    <main className="page">
+      <Nav />
+      <h1>Built with Zal — {left} open</h1>
+      <Counter label="Clicks" step={2} />
+      <TodoList title="Todo" />
+    </main>
+  );
+}

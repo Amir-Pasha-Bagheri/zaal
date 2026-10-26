@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+import { cli } from '../zal.mjs';
+cli(process.argv.slice(2));

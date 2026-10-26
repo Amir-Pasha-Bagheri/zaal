@@ -1,0 +1,8 @@
+i Nav ../components/Nav
+C NotFound
+  use path = useRoute()
+  %page
+    Nav
+    h1 "404"
+    %hint "no route for {path}"
+    Link to="/" "go home"

@@ -1,0 +1,292 @@
+D Zal                   // design system — the single source of truth for every .zal in this app
+
+// ── tokens ────────────────────────────────────  `t <group>` -> :root { --<group>-<name>: value }
+t color
+  bg         #ffffff
+  surface    #f7f8fa
+  line       #e3e6eb
+  fg         #14161a
+  muted      #5f6672
+  accent     #3b5bfd
+  on-accent  #ffffff
+  danger     #d93a3a
+t space
+  1  .25rem
+  2  .5rem
+  3  .75rem
+  4  1rem
+  6  1.5rem
+  8  2rem
+t radius
+  sm    .4rem
+  md    .6rem
+  full  999px
+t size
+  sm    .875rem
+  base  1rem
+  lg    1.25rem
+  xl    1.75rem
+t weight
+  normal  400
+  medium  500
+  bold    600
+t leading
+  tight  1.25
+  body   1.5
+t font
+  sans  ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif
+  mono  ui-monospace, SFMono-Regular, Menlo, monospace
+
+// ── schemes ───────────────────────────────  token overrides for prefers-color-scheme + [data-theme]
+scheme dark
+  color.bg         #0e1013
+  color.surface    #171a1f
+  color.line       #2a2e36
+  color.fg         #e8eaee
+  color.muted      #99a0ab
+  color.accent     #7d9bff
+  color.on-accent  #0e1013
+
+// ── elements ──────────────────────────────────────────  `e <selector>`: unclassed base styles
+e *, *::before, *::after
+  box-sizing border-box
+e body
+  m 0
+  bg $color.bg
+  fg $color.fg
+  font $font.sans
+  size $size.base
+  leading $leading.body
+e h1
+  size $size.xl
+  weight $weight.bold
+  leading $leading.tight
+  m $space.6 0 $space.4
+e h2
+  size $size.lg
+  weight $weight.medium
+  m 0 0 $space.2
+
+// ── kit ──────────────────────────  `k <class> [tag]` one recipe per class, `v <name>` = modifier
+k page main
+  maxw 48rem
+  mx auto
+  py $space.8
+  px $space.4
+  @media (max-width: 30rem)
+    py $space.4
+    px $space.3
+
+k nav nav
+  display flex
+  align-items center
+  gap $space.3
+  mb $space.6
+  flex-wrap wrap
+  & a
+    fg inherit
+    text-decoration none
+    opacity .6
+  & a[data-active]
+    opacity 1
+    weight $weight.bold
+
+k card section
+  bg $color.surface
+  border 1px solid $color.line
+  radius $radius.md
+  p $space.4
+  my $space.4
+  v bad
+    border-color $color.danger
+    & h2
+      fg $color.danger
+
+k row form
+  display flex
+  gap $space.2
+  align-items flex-end
+  v search
+    my $space.4
+  v back
+    justify-content space-between
+    my $space.4
+  & input
+    flex 1
+    p $space.2 $space.3
+    radius $radius.sm
+    border 1px solid $color.line
+    bg $color.bg
+    fg inherit
+    font inherit
+  & input:focus-visible
+    outline 2px solid $color.accent
+    outline-offset 1px
+
+k btn button
+  p $space.2 $space.3
+  radius $radius.sm
+  border 1px solid $color.line
+  bg transparent
+  fg inherit
+  font inherit
+  size $size.sm
+  weight $weight.medium
+  cursor pointer
+  :hover
+    border-color $color.accent
+    fg $color.accent
+  v primary
+    bg $color.accent
+    border-color $color.accent
+    fg $color.on-accent
+    :hover
+      fg $color.on-accent
+      filter brightness(1.08)
+  v icon
+    px $space.2
+    border-color transparent
+    fg $color.muted
+    :hover
+      fg $color.danger
+      border-color transparent
+
+k list ul
+  list-style none
+  p 0
+  m $space.3 0 0
+
+k item li
+  display flex
+  justify-content space-between
+  align-items center
+  gap $space.2
+  py $space.1
+
+k hint p
+  fg $color.muted
+  size $size.sm
+  m 0
+
+k counter div
+  display flex
+  align-items center
+  gap $space.2
+  flex-wrap wrap
+
+k spacer span
+  flex 1
+
+k mark img
+  display block
+  border-radius $radius.sm
+
+k pill span
+  bg $color.surface
+  border 1px solid $color.line
+  radius $radius.full
+  px $space.3
+  py $space.1
+  size $size.sm
+  fg $color.muted
+
+k badge zal-badge
+  display inline-block
+  bg $color.surface
+  border 1px dashed $color.line
+  radius $radius.sm
+  px $space.2
+  py $space.1
+  size $size.sm
+  fg $color.muted
+
+k field label
+  display flex
+  flex-direction column
+  gap $space.1
+  flex 1
+  size $size.sm
+  fg $color.muted
+  & input
+    p $space.2 $space.3
+    radius $radius.sm
+    border 1px solid $color.line
+    bg $color.bg
+    fg $color.fg
+    font inherit
+    size $size.base
+
+// a responsive grid: three columns, two on a tablet, one on a phone
+k grid div
+  display grid
+  grid-template-columns repeat(3, 1fr)
+  gap $space.3
+  m $space.4 0
+  @media (max-width: 44rem)
+    grid-template-columns repeat(2, 1fr)
+  @media (max-width: 30rem)
+    grid-template-columns 1fr
+
+k tile div
+  display flex
+  align-items center
+  justify-content space-between
+  gap $space.2
+  bg $color.surface
+  border 1px solid $color.line
+  radius $radius.md
+  p $space.3
+  & a
+    display flex
+    align-items center
+    gap $space.2
+    fg inherit
+    text-decoration none
+    text-transform capitalize
+  & h2
+    m 0
+
+k sprite img
+  w 40px
+  h 40px
+  object-fit contain
+  v big
+    w 96px
+    h 96px
+
+k sheet div
+  display block
+
+k spark svg
+  display block
+  fg $color.accent
+  maxw 100%
+  h auto
+
+k loading div
+  display flex
+  align-items center
+  gap $space.3
+  py $space.6
+
+k spin span
+  display block
+  w 1.25rem
+  h 1.25rem
+  radius $radius.full
+  border 2px solid $color.line
+  border-top-color $color.accent
+  animation spin .8s linear infinite
+
+@keyframes spin
+  from
+    transform rotate(0deg)
+  to
+    transform rotate(360deg)
+
+// motion is a preference, not a decoration
+@media (prefers-reduced-motion: reduce)
+  k spin
+    animation none
+  e *, *::before, *::after
+    transition none

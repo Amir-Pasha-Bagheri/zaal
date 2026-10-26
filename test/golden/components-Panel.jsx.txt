@@ -1,0 +1,13 @@
+export default function Panel({ title, actions = null, children }) {
+  return (
+    <section className="card">
+      <h2>{title}</h2>
+      {actions ? (
+        <nav className="nav">
+          {actions}
+        </nav>
+      ) : null}
+      {children}
+    </section>
+  );
+}

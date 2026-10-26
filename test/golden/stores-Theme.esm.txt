@@ -1,0 +1,27 @@
+import { useState, useEffect, useMemo, useCallback, useContext, createContext, createElement as h, Fragment as F } from 'react';
+
+const KEY = "zal:theme";
+const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } })();
+
+export const ThemeContext = createContext(null);
+
+export function ThemeProvider({ children }) {
+  const [mode, setMode] = useState(saved.mode ?? "light");
+  const toggle = useCallback(() => setMode(mode == "dark" ? "light" : "dark"), [mode]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = mode;
+  }, [mode]);
+  useEffect(() => {
+    try { localStorage.setItem(KEY, JSON.stringify({ mode })); } catch {}
+  }, [mode]);
+  const value = useMemo(() => ({ mode, setMode, toggle }), [mode, toggle]);
+  return h(ThemeContext.Provider, { value }, children);
+}
+
+export function useTheme() {
+  const value = useContext(ThemeContext);
+  if (!value) throw new Error('useTheme() used outside <ThemeProvider>');
+  return value;
+}
+
+export default useTheme;

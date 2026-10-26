@@ -1,0 +1,5 @@
+/* raw CSS the design system has no opinion about: print, and the focus ring the browser owns */
+@media print {
+  .nav, .btn { display: none }
+  .page { max-width: none }
+}

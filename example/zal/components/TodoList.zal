@@ -1,0 +1,17 @@
+i Item ./Item
+C TodoList p:title="Todo" s:draft=""
+  use { items, left, add, drop } = Todos
+  ref box
+  fx! box.current?.focus()
+  cb submit(e) = e.preventDefault(); add(draft); draft=""
+  %card
+    h2 "{title} ({left})"
+    %row @submit=submit
+      input val=draft @input=draft=e.target.value placeholder="what next?" ref=box
+      %btn.primary type="submit" "add"
+    ?items.length
+      %list
+        *items as t k=t.id
+          Item todo=t onRemove=()=>drop(t.id)
+    :
+      %hint "nothing yet"

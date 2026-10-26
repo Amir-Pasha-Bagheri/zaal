@@ -1,0 +1,8 @@
+// a wrapper component: `{children}` is whatever the caller nested, `actions` is markup it passed
+C Panel p:title p:actions=null
+  %card
+    h2 "{title}"
+    ?actions
+      %nav
+        {actions}
+    {children}

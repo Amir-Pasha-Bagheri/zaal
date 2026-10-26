@@ -1,0 +1,6 @@
+// the one class React still needs: nothing else catches an error thrown while rendering
+C Oops catch p:title="Something broke" p:onReset=null
+  %card.bad
+    h2 "{title}"
+    %hint "{error.message}"
+    %btn @click=reset();onReset?.() "try again"

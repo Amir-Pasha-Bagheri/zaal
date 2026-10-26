@@ -1,0 +1,57 @@
+import { lazy, Suspense, useState, useEffect, useMemo, useCallback } from 'react';
+import Nav from '../components/Nav.jsx';
+import Oops from '../components/Oops.jsx';
+import Boom from '../components/Boom.jsx';
+const Sparkline = lazy(() => import('../components/Sparkline.jsx'));
+import { motion } from 'framer-motion';
+import { API, art } from '../data/dex.jsx';
+import { useCaught } from '../stores/Caught.jsx';
+import { go } from '../router.jsx';
+
+export default function Pokemon({ name }) {
+  const [data, setData] = useState(null);
+  const [status, setStatus] = useState("loading");
+  const [boom, setBoom] = useState(false);
+  const { has, toggle } = useCaught();
+  const load = useCallback(() => { setStatus("loading"); fetch(`${API}/${name}`).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => { setData(d); setStatus("ready") }).catch(e => { setData(null); setStatus(e) }) }, [name]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  const stats = useMemo(() => data ? data.stats.map(s => s.base_stat) : [], [data]);
+  return (
+    <main className="page">
+      <Nav />
+      <form className="row back">
+        <button className="btn" onClick={() => go("/dex")}>← back</button>
+        <button className="btn primary" onClick={() => toggle(name)}>{has(name) ? "release" : "catch"} {name}</button>
+      </form>
+      <motion.div className="sheet" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}>
+        <h1>{name}</h1>
+        {status == "loading" ? (
+          <p className="hint">loading…</p>
+        ) : status == "ready" ? (
+          <section className="card">
+            <img className="sprite big" src={art(name)} alt={name} />
+            <ul className="list">
+              {data.stats.map((s, i) => (
+                <li key={s.stat.name} className="item">
+                  <span>{s.stat.name}</span>
+                  <b>{s.base_stat}</b>
+                </li>
+              ))}
+            </ul>
+            <Suspense fallback={null}>
+              <Sparkline points={stats} />
+            </Suspense>
+          </section>
+        ) : (
+          <p className="hint">could not load {name} ({status})</p>
+        )}
+      </motion.div>
+      <Oops title="that one blew up" onReset={()=>setBoom(false)}>
+        <Boom go={boom} />
+      </Oops>
+      <button className="btn icon" onClick={() => setBoom(true)} title="throw">explode</button>
+    </main>
+  );
+}

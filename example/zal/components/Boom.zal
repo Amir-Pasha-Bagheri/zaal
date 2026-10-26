@@ -1,0 +1,4 @@
+// deliberately explodes, so the boundary above it has something to catch
+C Boom p:go=false
+  js if (go) throw new Error("the render threw — Oops caught it")
+  %hint "nothing has exploded yet"

@@ -1,0 +1,26 @@
+import { useState, useEffect, useMemo, useCallback, useContext, createContext } from 'react';
+
+const KEY = "zal:todos";
+const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } })();
+
+export const TodosContext = createContext(null);
+
+export function TodosProvider({ children }) {
+  const [items, setItems] = useState(saved.items ?? []);
+  const left = useMemo(() => items.filter(t => !t.done).length, [items]);
+  const add = useCallback((text) => setItems([...items,{id:Date.now(),text}]), [items]);
+  const drop = useCallback((id) => setItems(items.filter(t => t.id !== id)), [items]);
+  useEffect(() => {
+    try { localStorage.setItem(KEY, JSON.stringify({ items })); } catch {}
+  }, [items]);
+  const value = useMemo(() => ({ items, setItems, left, add, drop }), [items, left, add, drop]);
+  return <TodosContext.Provider value={value}>{children}</TodosContext.Provider>;
+}
+
+export function useTodos() {
+  const value = useContext(TodosContext);
+  if (!value) throw new Error('useTodos() used outside <TodosProvider>');
+  return value;
+}
+
+export default useTodos;
