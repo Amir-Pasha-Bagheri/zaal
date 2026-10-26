@@ -19,7 +19,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@zaal/core": "^0.1.0",
+    "zaal": "^0.1.0",
     "@zaal/web": "^0.1.0"
   },
   "publishConfig": {

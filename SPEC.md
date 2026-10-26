@@ -5,10 +5,15 @@ npm install                # links the workspace packages and puts `zaal` on the
 cd example && npx zaal dev # preview + live reload on http://localhost:5173
 npm test                   # the compiler's own suite (no dependencies)
 ```
-The compiler has no dependencies. It is layered: `@zaal/core` is this document's grammar and the
-build pipeline, `@zaal/web` the `ui.zaal` design system and the `app.zaal` project model, and a
-target package generates the code — `@zaal/react` today. The `zaal` command ties them together.
-A Zaal **project** is two directories — `zaal/`, which
+As a user rather than from this repo, it is the command plus a target to compile with:
+```
+npm i -g zaal
+npm i -D @zaal/react
+```
+The compiler has no dependencies. `zaal` is this document's grammar, the build pipeline and the
+command; `@zaal/web` is the `ui.zaal` design system and the `app.zaal` project model that every
+web target shares; and a target package generates the code — `@zaal/react` today, named by the
+`target` line in `app.zaal`. A Zaal **project** is two directories — `zaal/`, which
 is everything hand-written, and `application/`, which `zaal build` writes — and `example/` is one.
 Every command runs in the project directory.
 
@@ -297,6 +302,7 @@ C Counter p:label="Count" s:n=0
 
 ```
 A Demo              // app block
+  target react      // which target package compiles this app (default: react)
   t "Zaal Demo"      // document title
   m #root           // mount node id
   ui ./ui.zaal       // design system -> generated src/styles/ui.css
@@ -310,6 +316,11 @@ A Demo              // app block
   /heavy Heavy lazy // fetched on first visit, not in the main bundle (wrapped in Suspense)
   /* NotFound       // the catch-all: rendered when nothing else matched, whatever the order
 ```
+
+`target` names the package that generates the code: `react` means `@zaal/react`, and a name with
+a slash is taken as written (`target my-org/zaal-svelte`). It is the one directive read before
+anything else is parsed — `zaal` itself has no framework in it, and must know whose compiler to
+load before it can read the rest of the file. Omitted, it is `react`.
 
 `ui` and `css` paths are relative to `app.zaal` itself, so they read the way the source tree does.
 A directive this list does not name is an error, so a typo (`stores`, `title`) is reported rather

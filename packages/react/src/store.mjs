@@ -1,5 +1,5 @@
 // `S Name` -> a context, a provider and a use<Name>() hook.
-import { fail, IDENT, setter } from '@zaal/core';
+import { fail, IDENT, setter } from 'zaal';
 import { hookCode, lineText } from './component.mjs';
 import { EL } from './markup.mjs';
 

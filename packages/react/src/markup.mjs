@@ -1,6 +1,6 @@
 // Markup -> React elements, two ways: JSX for a bundler to compile, and createElement calls
 // for the no-install preview to run as-is.
-import { fail, attrParts, tmpl } from '@zaal/core';
+import { fail, attrParts, tmpl } from 'zaal';
 
 // Kinds a fragment of one can collapse into; `if`/`map`/`slot` have to go through *Kids.
 const PLAIN = new Set(['el', 'text', 'expr']);

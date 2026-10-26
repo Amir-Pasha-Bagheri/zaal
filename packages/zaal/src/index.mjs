@@ -1,7 +1,7 @@
-// @zaal/core — the language itself, and nothing above it: the grammar, the expression and
-// statement forms, diagnostics, and the pipeline that walks a project. It knows nothing about
-// any framework, and nothing about CSS or routing — @zaal/web owns those, and a target package
-// (@zaal/react, …) supplies the code generation.
+// zaal — the language itself, the pipeline that walks a project, and the `zaal` command. It
+// depends on nothing, and knows nothing about any framework, about CSS or about routing:
+// @zaal/web owns the web layer, and a target package (@zaal/react, @zaal/vue, …) supplies the
+// code generation. Every target is a plugin on top of this.
 
 export { tokens } from './lex.mjs';
 export { here, fail, located, inFile } from './diagnostics.mjs';
@@ -14,3 +14,4 @@ export { CDN, isRel, isAsset, splitSpec, pkgRef, syncDeps } from './deps.mjs';
 export { warn, pkgLine } from './log.mjs';
 export { project, build, serve, watchAndServe } from './pipeline.mjs';
 export { SRC_DIR, APP_FILE, APP_DIR, DEV_DIR, OUT_SRC, OUT_CSS, posix, rel } from './layout.mjs';
+export { cli, loadTarget } from './cli.mjs';

@@ -9,8 +9,8 @@
   ],
   "scripts": {
     "test": "node --test \"test/*.test.mjs\"",
-    "demo": "cd example && node ../packages/cli/bin/zaal dev",
-    "demo:build": "cd example && node ../packages/cli/bin/zaal build"
+    "demo": "cd example && node ../packages/zaal/bin/zaal dev",
+    "demo:build": "cd example && node ../packages/zaal/bin/zaal build"
   },
   "engines": {
     "node": ">=20"

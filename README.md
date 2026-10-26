@@ -33,29 +33,37 @@ generation.
 
 | Package | What it is |
 | --- | --- |
-| [`zaal`](packages/cli) | The `zaal` command — build, preview, live-reload. **This is the one you install.** |
-| [`@zaal/react`](packages/react) | The React target. Two backends: `jsx` for a bundler, `esm` for a zero-install preview. |
+| [`zaal`](packages/zaal) | The language, the build pipeline and the `zaal` command. **Depends on nothing.** |
 | [`@zaal/web`](packages/web) | The web layer every frontend target shares: the `ui.zaal` design system, the `app.zaal` project model. |
-| [`@zaal/core`](packages/core) | The language: lexer, parser, expressions, diagnostics, build pipeline. No framework, no CSS, no routing. |
+| [`@zaal/react`](packages/react) | The React target. Two backends: `jsx` for a bundler, `esm` for a zero-install preview. |
 
 ```
-npm i -g zaal       # or: npm i -D zaal
+npm i -g zaal           # the command
+npm i -D @zaal/react    # and a target for it to compile with
 zaal build
 ```
 
-Each layer depends only on the one below it:
+`zaal` has no framework in it. Which target compiles an app is a line in `app.zaal` —
+`target react` — resolved at runtime, so `@zaal/vue` or `@zaal/next` drops in beside
+`@zaal/react` without `zaal` knowing either exists.
+
+Every target is a plugin, and the arrows point inward — nothing in `zaal` names a framework:
 
 ```
-zaal          the command
-  └─ @zaal/react      React codegen     ← @zaal/next, @zaal/vue, @zaal/angular join here
-       └─ @zaal/web   design system + app model   ← every *web* target shares this
-            └─ @zaal/core   the language    ← a backend or non-JS target starts here instead
+zaal                      the language, the pipeline, the CLI. no dependencies.
+ ├─ @zaal/web             design system + app model    ← every *web* target shares this
+ │    ├─ @zaal/react      React codegen
+ │    ├─ @zaal/next       ┐
+ │    ├─ @zaal/vue        ├─ later, as equals beside React
+ │    └─ @zaal/angular    ┘
+ └─ @zaal/python          ┐ a backend or non-web target sits HERE instead:
+    @zaal/dotnet          ┘ on the language alone, with no CSS and no mount node
 ```
 
 A target is an object that says which backends it has and how it writes each file of the output.
-`@zaal/core`'s `build` asks it those questions and never names React — or CSS, or routing, which
-is why a target that compiles to a backend service, or to Python or .NET, can sit beside
-`@zaal/web` rather than underneath it.
+`zaal`'s `build` asks it those questions — including what an app declaration and a design system
+even *are* — and never names React, or CSS, or routing. That is what lets a target compiling to
+a backend service, or to Python or .NET, sit beside `@zaal/web` rather than underneath it.
 
 ## Getting started
 

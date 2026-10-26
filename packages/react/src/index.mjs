@@ -4,7 +4,7 @@
 // A target is an object: which code shapes ("backends") it can emit, and how it writes each
 // file of the output. @zaal/core's `build` asks it those questions and never names React.
 import { APP_DIR, DEV_DIR, build as coreBuild, watchAndServe as coreWatch,
-  project as coreProject } from '@zaal/core';
+  project as coreProject } from 'zaal';
 import { parseApp, parseUI, uiCss } from '@zaal/web';
 import { compile } from './compile.mjs';
 import { router, mainFile, html } from './app.mjs';

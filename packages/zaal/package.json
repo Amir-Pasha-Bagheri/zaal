@@ -1,0 +1,21 @@
+{
+  "name": "zaal",
+  "version": "0.1.0",
+  "description": "Zaal — a token-dense DSL that compiles to a runnable app. The language, the build pipeline and the `zaal` command, with no dependencies.",
+  "keywords": ["zaal", "dsl", "compiler", "codegen", "cli"],
+  "type": "module",
+  "bin": { "zaal": "./bin/zaal" },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./*": "./src/*"
+  },
+  "files": ["src", "bin", "README.md"],
+  "engines": { "node": ">=20" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YOUR-USERNAME/zaal.git",
+    "directory": "packages/zaal"
+  },
+  "homepage": "https://github.com/YOUR-USERNAME/zaal/tree/main/packages/zaal",
+  "bugs": "https://github.com/YOUR-USERNAME/zaal/issues"
+}

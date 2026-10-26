@@ -2,18 +2,30 @@
   "name": "@zaal/web",
   "version": "0.1.0",
   "description": "Zaal's web-frontend layer: the ui.zaal design system and the app.zaal project model, shared by every framework target.",
-  "keywords": ["zaal", "dsl", "css", "design-system"],
+  "keywords": [
+    "zaal",
+    "dsl",
+    "css",
+    "design-system"
+  ],
   "type": "module",
   "exports": {
     ".": "./src/index.mjs",
     "./*": "./src/*"
   },
-  "files": ["src", "README.md"],
+  "files": [
+    "src",
+    "README.md"
+  ],
   "dependencies": {
-    "@zaal/core": "^0.1.0"
+    "zaal": "^0.1.0"
   },
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=20" },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/YOUR-USERNAME/zaal.git",

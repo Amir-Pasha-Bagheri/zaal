@@ -10,7 +10,7 @@ Two things live here, and neither has anything to do with React:
   store nesting order, and npm package pins.
 
 They sit in their own package because they are meaningless to a target that does not compile to
-a web page. [`@zaal/core`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/core) is the
+a web page. [`zaal`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/zaal) is the
 language and knows nothing about CSS or routing — it *asks* for these rather than importing
 them, so a target compiling to a backend service, or to another language entirely, is not forced
 to have a design system or a mount node.
@@ -31,7 +31,7 @@ target.
 
 ## For a new web target
 
-Hand these to `@zaal/core`'s pipeline on your target object and you inherit the whole design
+Hand these to `zaal`'s pipeline on your target object and you inherit the whole design
 system and app model for free:
 
 ```js

@@ -1,6 +1,6 @@
 // ui.zaal -> CSS custom properties, base element rules and a UI kit. Plain CSS out, so every
 // target shares one design system.
-import { tokens, fail } from '@zaal/core';
+import { tokens, fail } from 'zaal';
 
 // Dense property aliases. Anything not listed is passed through as plain CSS.
 const PROP = { bg: 'background', fg: 'color', radius: 'border-radius', size: 'font-size',

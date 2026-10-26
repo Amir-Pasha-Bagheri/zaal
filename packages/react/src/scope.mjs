@@ -1,7 +1,7 @@
 // What names a module has, and whether every component it references is one of them. Without
 // this the compiler happily emits a call to a component with no import to match, and the
 // mistake only surfaces as a ReferenceError in the browser.
-import { fail, nearest, rel, RAW_BODY, SRC_DIR } from '@zaal/core';
+import { fail, nearest, rel, RAW_BODY, SRC_DIR } from 'zaal';
 import { ROUTER_EXPORTS, REACT_COMPS } from './names.mjs';
 
 // Resolve `%name` tags against the kit and record every class the file uses.

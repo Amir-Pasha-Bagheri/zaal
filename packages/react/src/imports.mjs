@@ -2,7 +2,7 @@
 // app a developer can run without ever hearing about Zaal.
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fail, here, isRel, isAsset, pkgRef, posix, CDN } from '@zaal/core';
+import { fail, here, isRel, isAsset, pkgRef, posix, CDN } from 'zaal';
 import { REACT_V, EXTERNAL, BUILTIN, VITE_V, PLUGIN_V } from './names.mjs';
 
 // react and react-dom are React's to provide: they are already in the import map at the version

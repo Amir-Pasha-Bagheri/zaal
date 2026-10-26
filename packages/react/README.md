@@ -1,9 +1,9 @@
 # @zaal/react
 
 The React target for Zaal: compiles `.zaal` sources into a standalone React app. The language it
-compiles is [`@zaal/core`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/core)'s; see **[SPEC.md](https://github.com/YOUR-USERNAME/zaal/blob/main/SPEC.md)** for it.
+compiles is [`zaal`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/zaal)'s; see **[SPEC.md](https://github.com/YOUR-USERNAME/zaal/blob/main/SPEC.md)** for it.
 
-Most people want [`zaal`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/cli) instead — this package is the compiler, not the command.
+Most people want [`zaal`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/zaal) instead — this package is the compiler, not the command.
 
 ```js
 import { build, compile } from '@zaal/react';

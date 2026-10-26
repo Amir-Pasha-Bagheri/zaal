@@ -1,11 +1,12 @@
 // app.zaal: the routes, the title, the design system, the package pins. An app declaration
 // says what the app *is*, not what it compiles to, so none of this is target-specific.
-import { parse, fail, splitSpec, CDN, SRC_DIR } from '@zaal/core';
+import { parse, fail, splitSpec, CDN, SRC_DIR } from 'zaal';
 
 function parseApp(src) {
   const node = parse(src).kids.find(n => n.kind === 'app');
   if (!node) throw new Error('app file has no `A <Name>` block');
   const app = { name: node.name, ln: node.ln, title: node.name, mount: 'root', ui: null, css: [], routes: [],
+    target: 'react',
     pins: new Map(), cdn: CDN, storeOrder: [] };
   for (const k of node.kids) {
     if (k.kind === 'route') { app.routes.push({ path: k.path, component: k.component, lazy: k.lazy, ln: k.ln }); continue; }
@@ -18,6 +19,9 @@ function parseApp(src) {
     else if (key === 'store') app.storeOrder.push(...rest);
     else if (key === 'pkg') { const { pkg, version } = splitSpec(val); app.pins.set(pkg, version); }
     else if (key === 'cdn') app.cdn = val.replace(/\/$/, '');
+    // `target react` — which target package compiles this app. The CLI reads it before any of
+    // this runs (it has to, to know whose parseApp to call), so here it only has to be legal.
+    else if (key === 'target') app.target = val;
     else fail(k, `app: unknown directive \`${key}\``);
   }
   return app;

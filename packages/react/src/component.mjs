@@ -1,7 +1,7 @@
 // `C Name` -> a function component, its hooks and (with `catch`) the one class React still
 // needs for an error boundary.
 import { fail, here, IDENT, setter, interp, stmts, fnBody, splitStmts, isRel, splitSpec,
-  rel } from '@zaal/core';
+  rel } from 'zaal';
 import { jsxNode, esmNode } from './markup.mjs';
 
 function component(node, target, opts = {}) {

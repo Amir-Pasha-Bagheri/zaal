@@ -1,5 +1,5 @@
 // One .zaal source -> one React module.
-import { parse, memberTags, fail, rel, CDN } from '@zaal/core';
+import { parse, memberTags, fail, rel, CDN } from 'zaal';
 import { aliases, EL, FRAG } from './markup.mjs';
 import { component, boundary, reactNames, lineText } from './component.mjs';
 import { store } from './store.mjs';
