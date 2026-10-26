@@ -67,7 +67,18 @@ const typeKey = (key, type) => {
 let dirty = false, rendering = false, root = null;
 export let nodes = [];        // every host element rendered in the last pass
 
-const schedule = () => { dirty = true; if (!rendering && root) flush(); };
+// React batches every update made inside one event handler into a single re-render. Without
+// that, two setStates in one handler render twice — and the pass in between can see a state
+// half-updated (a boundary's `reset(); onReset()` would re-throw on the intermediate render).
+let batching = false;
+const schedule = () => { dirty = true; if (!rendering && !batching && root) flush(); };
+
+export function batch(fn) {
+  const was = batching;
+  batching = true;
+  try { fn(); } finally { batching = was; }
+  if (!was && dirty && root) flush();
+}
 
 const slotsFor = path => {
   if (!slots.has(path)) slots.set(path, []);
@@ -127,6 +138,11 @@ export const useId = () => { const [list, i] = slot(() => `id-${i_counter++}`); 
 let i_counter = 0;
 export const useSyncExternalStore = (sub, get) => { useEffect(() => sub(() => schedule()), []); return get(); };
 export const useTransition = () => [false, fn => fn()];
+export const useDebugValue = () => {};
+export const useImperativeHandle = (ref, fn) => { if (ref) ref.current = fn(); };
+export const useOptimistic = v => [v, () => {}];
+export const useActionState = (fn, init) => [init, () => {}, false];
+export const useInsertionEffect = useEffect;
 export const useDeferredValue = v => v;
 export const startTransition = fn => fn();
 
@@ -193,7 +209,16 @@ function render(node, path) {
       return render(inst.render(), key + '/r');
     }
   }
-  if (type.$$lazy && !type.$$loaded) return '';
+  // A lazy component: kick off the import once, render nothing until it lands, then re-render.
+  // (React suspends here; the generated code always wraps one in Suspense, so this is the same
+  // observable behaviour — fallback first, the real tree on the next pass.)
+  if (type.$$lazy && !type.$$loaded) {
+    if (!type.$$pending) {
+      type.$$pending = true;
+      type.$$lazy().then(m => { type.$$loaded = m.default ?? m; schedule(); });
+    }
+    return '';
+  }
   const prev = hooks;
   hooks = { path: typeKey(key, type), i: 0 };
   try {
@@ -252,11 +277,10 @@ const handle = () => ({
     if (!node) throw new Error(`no node matching ${String(target)} — have: ${nodes.map(n => n.tag + ':' + n.text).join(' | ')}`);
     const fn = node.props[ev];
     if (!fn) throw new Error(`<${node.tag}> has no ${ev}`);
-    fn({ preventDefault() {}, stopPropagation() {}, target: { value: '' }, ...payload });
-    flush();
+    batch(() => fn({ preventDefault() {}, stopPropagation() {}, target: { value: '' }, ...payload }));
     return this;
   },
-  act(fn) { fn(); flush(); return this; },
+  act(fn) { batch(fn); return this; },
 });
 
 export function reset() {

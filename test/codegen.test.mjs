@@ -256,3 +256,17 @@ test('a class after a member tag is still a class', () => {
   const src = 'i { motion } from framer-motion\nC A\n  motion.div.sheet "x"\n';
   assert.match(jsx(src), /<motion\.div className="sheet">x<\/motion\.div>/);
 });
+
+// The esm backend's `createElement as h` is a name a component may want for itself.
+test('esm: the createElement alias steps aside for a prop of the same name', () => {
+  const out = esm('C Spark p:h=48 p:w=240\n  svg width=w height=h\n');
+  assert.match(out, /import \{ createElement as _h, Fragment as F \} from 'react';/);
+  assert.match(out, /_h\("svg", \{ "width": w, "height": h \}\)/);
+  assert.doesNotMatch(out, /(?<![\w$_])h\(/);
+});
+
+test('esm: the fragment alias does the same', () => {
+  const out = esm('js const F = 1\nC A\n  p "a"\n  p "b"\n');
+  assert.match(out, /Fragment as _F/);
+  assert.match(out, /h\(_F, null/);
+});

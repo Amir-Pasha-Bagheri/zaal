@@ -40,6 +40,29 @@ All eight are fixed, tested (422 passing) and documented in SPEC.md.
   (`zal.mjs:401`), ignoring child lines, so raw CSS has to fit on one line. Responsive design is
   the biggest hole in the design system.
 
+## Part 1b — gaps the expanded example turned up — **done**
+
+Building a real app against the DSL (see `example/`) found four more, all fixed and tested:
+
+- [x] **G9. Two string literals on one line merged into one template.** `interp` looked for a
+  `"…{…}…"` directly, so the match could start at the *closing* quote of one string and end
+  inside the next: `setStatus("live")` beside a `{…}` object became one broken template. Now
+  every literal is matched in turn and only the ones holding a `{` interpolate.
+- [x] **G10. A lone `?` rendered React's stray `0`.** `{cond && (…)}` renders `0` for
+  `?items.length` over an empty list. A lone branch is now `{cond ? (…) : null}` in both
+  backends. (Deliberate change of a documented behaviour — SPEC.md updated.)
+- [x] **G11. The esm backend's `createElement as h` could be shadowed.** `C Sparkline p:h=48`
+  made the prop win and every `h(…)` call in the module threw. The alias now steps aside
+  (`_h`, `_F`) when the source names the letter.
+- [x] **G12. Trailing `//` comments were not stripped** from `.zal` lines, though SPEC.md
+  showed them in `app.zal`. They are now, quote-aware, so a URL or a text node keeps its `//`.
+- [x] **Catch-all route.** `/* NotFound` in `app.zal` becomes the router's fallback — the first
+  slice of F6, and what a 404 page needs.
+
+Three fixes to the test harness came with them, so the suite can exercise what the example
+does: `fetch` (a canned PokéAPI) in `test/helpers/env.mjs`, lazy imports that actually resolve,
+and React's batching of several `setState` calls inside one event handler.
+
 ## Part 2 — features (React surface Zal cannot say)
 
 - [ ] **F1. Custom hook blocks.** No `H useThing` — a shared hook is hand-written JS today.
@@ -48,11 +71,16 @@ All eight are fixed, tested (422 passing) and documented in SPEC.md.
 - [ ] **F4. Own contexts.** `ctx` reads one; only `S` creates one. No `createContext` form.
 - [ ] **F5. Event ergonomics.** No `.prevent` / `.stop` modifiers, no `@key.enter`; `EV`
   (`zal.mjs:237`) names 9 events and guesses the rest.
-- [ ] **F6. Router depth.** `zal.mjs:1202` is a 44-line flat hash router: no history/pathname
-  mode, nested layouts, declared 404, redirects, query params, scroll restoration or route data
-  loading. Nested layouts are the first thing a real app wants.
+- [ ] **F6. Router depth.** A flat hash router: no history/pathname mode, nested layouts,
+  redirects, query params, scroll restoration or route data loading. (A declared 404 is done —
+  `/* NotFound`.) Nested layouts are the first thing a real app wants.
 - [ ] **F7. Per-route `<head>`.** Title and meta are app-global (`t` in `app.zal`).
 - [ ] **F8. TypeScript output.** No types, no `.d.ts`, no prop types.
 - [ ] **F9. Test scaffolding.** `application/` ships no vitest/RTL config.
 - [ ] **F10. Server-side React.** No SSR/RSC story: `'use client'`, server actions,
   `<form action={fn}>` are outside the model.
+
+- [ ] **F11. Async flow sugar.** A page that fetches writes its own `setStatus(…)`/`setData(…)`
+  calls inside a promise chain (see `zal/pages/Dex.zal`): state assignment only rewrites at the
+  top level of a statement. A `load` or `async` line that owns the loading/error/data triple
+  would cut the most verbose thing in the example by half.

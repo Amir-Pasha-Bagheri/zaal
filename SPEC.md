@@ -37,7 +37,8 @@ package an `i` line named to `dependencies`. Inside `src/` the compiler is the a
 renamed or deleted `.zal` has its module swept — and it never touches `node_modules/`, `dist/`
 or anything else you put in the folder.
 
-Indentation = nesting. One node per line. `//` comments ignored.
+Indentation = nesting. One node per line. `//` comments ignored — a whole line, or the tail of
+one (`store Theme Todos  // outermost first`); inside a quoted string it is text, not a comment.
 
 ## Top level
 | Zal | React |
@@ -48,7 +49,7 @@ Indentation = nesting. One node per line. `//` comments ignored.
 | `i Btn ./Btn` | `import Btn from './Btn';` (local — the extension is added for you) |
 | `i confetti canvas-confetti` | `import confetti from 'canvas-confetti';` — see **Packages** |
 | `i Heavy ./Heavy lazy` | `const Heavy = lazy(() => import('./Heavy.jsx'))` — wrap it in `Suspense` yourself |
-| `i logo ./logo.png` | an asset: the path keeps its extension and the file is copied to the output |
+| `i logo ./logo.png` | an asset: the path keeps its extension and the file is copied to the output (the `esm` preview resolves it to a URL, since it has no bundler) |
 | `js const x = 1` | emitted verbatim above the component |
 | `S Cart s:items=[]` | a store: context + `CartProvider` + `useCart()` — see **Global state** |
 
@@ -304,6 +305,7 @@ A Demo              // app block
   /about About
   /todo/:id Detail  // :params are passed to the component as props
   /heavy Heavy lazy // fetched on first visit, not in the main bundle (wrapped in Suspense)
+  /* NotFound       // the catch-all: rendered when nothing else matched, whatever the order
 ```
 
 `ui` and `css` paths are relative to `app.zal` itself, so they read the way the source tree does.

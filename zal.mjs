@@ -600,6 +600,15 @@ function jsxNode(ctx, n, ind, key) {
 
 /* ---------- backend: ESM (React.createElement, no build step) ---------- */
 
+// The esm backend calls `createElement` under a one-letter alias, which a component is free to
+// use as a name of its own (`C Sparkline p:h=48` shadowed it). The alias steps aside when the
+// source mentions the letter anywhere.
+let EL = 'h', FRAG = 'F';
+const aliases = src => {
+  const free = n => (new RegExp(`(?<![\\w$])${n}(?![\\w$])`).test(src) ? '_' + n : n);
+  EL = free('h'); FRAG = free('F');
+};
+
 // `"{children}"` is the element, not its text: a string that is one whole `{…}` stays an expression.
 // `\{` is a literal brace.
 const tmpl = s => /^\{[^{}]+\}$/.test(s) ? s.slice(1, -1)
@@ -639,7 +648,7 @@ function esmNode(ctx, n, key) {
   if (n.kind === 'frag') {
     const k = esmKids(ctx, n.kids);
     if (k.length === 1 && (!key || PLAIN.has(n.kids[0].kind))) return key ? withKey(k[0], key) : k[0];
-    return `h(F, ${key ? `{ key: ${key} }` : 'null'}, ${k.join(', ')})`;
+    return `${EL}(${FRAG}, ${key ? `{ key: ${key} }` : 'null'}, ${k.join(', ')})`;
   }
   const { pairs, spreads, text } = attrParts(ctx, n);
   const fills = slots(n);
@@ -652,14 +661,14 @@ function esmNode(ctx, n, key) {
     : `Object.assign({${entries.join(', ')}}, ${spreads.join(', ')})`;
   const tag = /^[a-z]/.test(n.tag) && !n.tag.includes('.') ? JSON.stringify(n.tag) : n.tag;
   const kids = [...text.map(tmpl), ...esmKids(ctx, rest)];
-  return `h(${tag}, ${props}${kids.length ? ', ' + kids.join(', ') : ''})`;
+  return `${EL}(${tag}, ${props}${kids.length ? ', ' + kids.join(', ') : ''})`;
 }
 
 // Put a key into an element the backend has already written, or wrap what cannot take one.
 const withKey = (expr, key) => {
-  const m = /^h\((.+?), (null|\{ ?)/.exec(expr);
-  if (!m) return `h(F, { key: ${key} }, ${expr})`;
-  const head = m[2] === 'null' ? `h(${m[1]}, { key: ${key} }` : `h(${m[1]}, { key: ${key}, `;
+  const m = new RegExp(`^${EL}\\((.+?), (null|\\{ ?)`).exec(expr);
+  if (!m) return `${EL}(${FRAG}, { key: ${key} }, ${expr})`;
+  const head = m[2] === 'null' ? `${EL}(${m[1]}, { key: ${key} }` : `${EL}(${m[1]}, { key: ${key}, `;
   return head + expr.slice(m[0].length);
 };
 
@@ -1083,7 +1092,7 @@ function store(node, target, opts = {}) {
   lines.push(`  const value = useMemo(() => ({ ${value.join(', ')} }), [${deps.join(', ')}]);`);
   const provider = target === 'jsx'
     ? `  return <${node.name}Context.Provider value={value}>{children}</${node.name}Context.Provider>;`
-    : `  return h(${node.name}Context.Provider, { value }, children);`;
+    : `  return ${EL}(${node.name}Context.Provider, { value }, children);`;
   const head = persist
     ? [`const KEY = ${JSON.stringify(key)};`,
        `const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } })();`, '']
@@ -1227,6 +1236,7 @@ export function compile(src, target = 'jsx',
   if (target !== 'jsx' && target !== 'esm') throw new Error(`unknown backend: ${target}`);
   const ext = target === 'jsx' ? '.jsx' : '.js';
   const ast = parse(src);
+  aliases(src);
   memberTags(ast, moduleScope(ast));
   linkUI(ast, ui, used);
   checkComponents(ast, known, dir);
@@ -1275,7 +1285,7 @@ export function compile(src, target = 'jsx',
   const react = [...new Set([...fromReact,
     ...[...REACT_HOOKS, 'createContext'].filter(h => new RegExp(`\\b${h}\\(`).test(body)),
     target === 'jsx' && /<Fragment[ >]/.test(body) && 'Fragment',
-    target === 'esm' && 'createElement as h', target === 'esm' && 'Fragment as F'])]
+    target === 'esm' && `createElement as ${EL}`, target === 'esm' && `Fragment as ${FRAG}`])]
     .filter(Boolean);
   const head = [react.length ? `import { ${react.join(', ')} } from 'react';` : null, ...imports].filter(Boolean);
   // (importLine returns null for package css in esm mode — the page links it instead)

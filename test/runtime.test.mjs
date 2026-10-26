@@ -215,3 +215,80 @@ test('an fx cleanup runs, and a ref survives re-renders', async () => {
   reset();
   assert.ok(globalThis.window.__torn, '`off` became the effect teardown');
 });
+
+// ---- the pokédex half of the example: fetching, params, the catch-all and the boundary ----
+
+const tick = () => new Promise(r => setTimeout(r, 0));
+
+test('Dex: the effect fetches, the list renders and search filters it', async () => {
+  const { app } = await runProject(exampleDir(), { hash: '#/dex' });
+  await tick();
+  assert.equal(app.all(n => (n.props.className || '') === 'tile').length, 3, 'three tiles from the API');
+  assert.match(app.html, /<span>pikachu<\/span>/);
+  app.fire(app.find(n => n.tag === 'input'), 'onInput', { target: { value: 'eev' } });
+  assert.equal(app.all(n => (n.props.className || '') === 'tile').length, 1, 'the memo filtered');
+  assert.match(app.html, /<span>eevee<\/span>/);
+  app.fire(app.find(n => n.tag === 'input'), 'onInput', { target: { value: 'zzz' } });
+  assert.match(app.html, /nothing matches/, 'the :? arm of the chain');
+});
+
+test('Dex: a failed request falls back to the bundled data and says so', async () => {
+  const { app } = await runProject(exampleDir(),
+    { hash: '#/dex', fetch: () => Promise.reject(new Error('offline')) });
+  await tick();
+  assert.match(app.html, /<span>bulbasaur<\/span>/, 'the data module seeded the list');
+  assert.match(app.html, /<zal-badge class="badge" text="offline — showing bundled data"/,
+    'the custom element rendered as written');
+});
+
+test('Caught: a star writes through the store and every screen sees it', async () => {
+  const { app, env } = await runProject(exampleDir(), { hash: '#/dex' });
+  await tick();
+  const star = app.all(n => n.tag === 'button' && n.props.title === 'catch');
+  assert.equal(star.length, 3);
+  app.fire(star[0], 'onClick');
+  assert.deepEqual(env.saved('zal:caught').ids, ['pikachu'], 'the store persisted');
+  assert.match(app.html, /1 caught/, 'the nav pill reads the same store');
+  env.navigate('/stats');
+  await tick();                                    // the lazy route's import resolves
+  await tick();
+  assert.match(app.html, /<h1>Stats<\/h1>/);
+  assert.match(app.html, /<li class="item"><span>pikachu<\/span><\/li>/);
+});
+
+test('Pokemon: the :name param drives the fetch and the detail renders', async () => {
+  const { app } = await runProject(exampleDir(), { hash: '#/dex/pikachu' });
+  await tick();
+  assert.match(app.html, /<h1>pikachu<\/h1>/);
+  assert.match(app.html, /<span>hp<\/span><b>35<\/b>/, 'the stats map rendered');
+  assert.match(app.html, /class="sheet"/, 'motion.div kept its class and its tag');
+  assert.match(app.html, /release pikachu|catch pikachu/);
+});
+
+test('Pokemon: an unknown name lands in the error arm', async () => {
+  const { app } = await runProject(exampleDir(), { hash: '#/dex/missingno' });
+  await tick();
+  assert.match(app.html, /could not load missingno/);
+});
+
+test('Pokemon: the boundary catches a thrown render and reset recovers', async () => {
+  const { app } = await runProject(exampleDir(), { hash: '#/dex/pikachu' });
+  await tick();
+  assert.match(app.html, /nothing has exploded yet/);
+  app.fire(app.find(n => n.props.title === 'throw'), 'onClick');
+  assert.match(app.html, /that one blew up/, 'the fallback replaced the children');
+  assert.match(app.html, /the render threw — Oops caught it/);
+  app.fire('try again');
+  assert.match(app.html, /nothing has exploded yet/, 'reset + onReset cleared both states');
+});
+
+test('the nav is one component on every page, with the asset and the theme toggle', async () => {
+  const { app, env } = await runProject(exampleDir(), { hash: '#/stats' });
+  await tick();
+  assert.match(app.html, /<img class="mark" src="[^"]*img\/logo\.png" alt="Zal"/, 'the asset URL');
+  app.fire(app.find(n => n.props.title === 'theme'), 'onClick');
+  assert.equal(env.document.documentElement.dataset.theme, 'dark');
+  env.navigate('/nope');
+  assert.match(app.html, /<h1>404<\/h1>/);
+  assert.match(app.html, /class="nav"/, 'the 404 page wears the same nav');
+});

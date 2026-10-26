@@ -4,7 +4,25 @@
 
 import { mount, reset } from './tiny-react.mjs';
 
-export function installEnv({ hash = '#/' } = {}) {
+// The canned PokéAPI the example talks to. `fetch` is part of the browser surface now: the
+// test run has no network, so every request is answered from here (or rejected, to exercise the
+// offline path a page falls back to).
+const POKEMON = {
+  results: [{ name: 'pikachu' }, { name: 'eevee' }, { name: 'snorlax' }],
+  pikachu: { name: 'pikachu', stats: [
+    { stat: { name: 'hp' }, base_stat: 35 }, { stat: { name: 'attack' }, base_stat: 55 }] },
+};
+
+const cannedFetch = url => {
+  const path = String(url);
+  if (/\/pokemon\?/.test(path)) return Promise.resolve({ ok: true, json: () => Promise.resolve(POKEMON.results && { results: POKEMON.results }) });
+  const one = /\/pokemon\/([\w-]+)/.exec(path);
+  if (one && POKEMON[one[1]]) return Promise.resolve({ ok: true, json: () => Promise.resolve(POKEMON[one[1]]) });
+  if (one) return Promise.resolve({ ok: false, status: 404, json: () => Promise.reject(new Error('404')) });
+  return Promise.reject(new Error(`no stub for ${path}`));
+};
+
+export function installEnv({ hash = '#/', fetch: fetchImpl = cannedFetch } = {}) {
   const store = new Map();
   const listeners = new Map();
 
@@ -41,6 +59,9 @@ export function installEnv({ hash = '#/' } = {}) {
   globalThis.document = doc;
   globalThis.localStorage = localStorage;
   globalThis.navigator ??= { userAgent: 'zal-test' };
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (url, opts) => fetchImpl(url, opts);
+  globalThis.AbortController ??= class { constructor() { this.signal = {}; } abort() { this.aborted = true; } };
 
   // `go('/x')` sets window.location.hash; the router listens for 'hashchange'.
   const navigate = to => { win.location.hash = '#' + to.replace(/^#/, ''); win.dispatch('hashchange'); };
@@ -49,10 +70,14 @@ export function installEnv({ hash = '#/' } = {}) {
   container.__render = element => { app = mount(element); };
 
   return {
-    window: win, document: doc, localStorage, navigate,
+    window: win, document: doc, localStorage, navigate, pokemon: POKEMON,
     seed: (k, v) => store.set(k, JSON.stringify(v)),
     saved: k => JSON.parse(store.get(k) ?? 'null'),
     get app() { return app; },
-    teardown() { reset(); delete globalThis.window; delete globalThis.document; delete globalThis.localStorage; },
+    teardown() {
+      reset();
+      globalThis.fetch = realFetch;
+      delete globalThis.window; delete globalThis.document; delete globalThis.localStorage;
+    },
   };
 }

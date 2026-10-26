@@ -27,9 +27,9 @@ export const inspect = root => project({ root });
 export const cleanup = () => { for (const r of roots.splice(0)) rmSync(r, { recursive: true, force: true }); };
 
 // Build the esm backend and run `src/main.js` against the tiny React: the generated app, live.
-export async function runProject(root, { hash = '#/' } = {}) {
+export async function runProject(root, { hash = '#/', fetch } = {}) {
   const out = buildIn(root, 'esm');
-  const env = installEnv({ hash });
+  const env = installEnv({ hash, ...(fetch ? { fetch } : {}) });
   await import(join(root, out.outDir, 'src/main.js'));
   return { env, out, app: env.app };
 }
