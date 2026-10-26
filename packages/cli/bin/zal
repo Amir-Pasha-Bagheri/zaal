@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+import { cli } from '../src/index.mjs';
+
+try { cli(process.argv.slice(2)); }
+catch (e) { console.error(`  error  ${e.message}`); process.exit(1); }

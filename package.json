@@ -1,20 +1,14 @@
 {
-  "name": "zal",
-  "version": "0.1.0",
+  "name": "zal-monorepo",
+  "version": "0.0.0",
   "private": true,
+  "description": "Zal — a token-dense DSL that compiles to a runnable app. This repo holds every package.",
   "type": "module",
-  "description": "A token-dense DSL that compiles to a runnable React app.",
-  "bin": {
-    "zal": "./bin/zal"
-  },
-  "files": [
-    "zal.mjs",
-    "bin/zal",
-    "SPEC.md"
-  ],
+  "workspaces": ["packages/*"],
   "scripts": {
     "test": "node --test \"test/*.test.mjs\"",
-    "demo": "cd example && node ../zal.mjs dev",
-    "demo:build": "cd example && node ../zal.mjs build"
-  }
+    "demo": "cd example && node ../packages/cli/bin/zal dev",
+    "demo:build": "cd example && node ../packages/cli/bin/zal build"
+  },
+  "engines": { "node": ">=20" }
 }

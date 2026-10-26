@@ -70,7 +70,7 @@ and React's batching of several `setState` calls inside one event handler.
 - [ ] **F3. Portals.** A `portal` head, rather than a manual `createPortal` expression child.
 - [ ] **F4. Own contexts.** `ctx` reads one; only `S` creates one. No `createContext` form.
 - [ ] **F5. Event ergonomics.** No `.prevent` / `.stop` modifiers, no `@key.enter`; `EV`
-  (`zal.mjs:237`) names 9 events and guesses the rest.
+  (`packages/core/src/expr.mjs`) names 9 events and guesses the rest.
 - [ ] **F6. Router depth.** A flat hash router: no history/pathname mode, nested layouts,
   redirects, query params, scroll restoration or route data loading. (A declared 404 is done —
   `/* NotFound`.) Nested layouts are the first thing a real app wants.

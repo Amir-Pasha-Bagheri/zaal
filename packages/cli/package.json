@@ -1,0 +1,16 @@
+{
+  "name": "@zal/cli",
+  "version": "0.1.0",
+  "description": "The `zal` command: build, preview and live-reload a Zal project.",
+  "keywords": ["zal", "cli"],
+  "type": "module",
+  "bin": { "zal": "./bin/zal" },
+  "exports": { ".": "./src/index.mjs" },
+  "files": ["src", "bin", "README.md"],
+  "dependencies": {
+    "@zal/core": "^0.1.0",
+    "@zal/react": "^0.1.0"
+  },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=20" }
+}

@@ -1,11 +1,13 @@
 # Zal v0.1 — a token-dense DSL that compiles to React
 
 ```
-npm link              # once, puts `zal` on your PATH
-cd example && zal dev # preview + live reload on http://localhost:5173
-npm test              # the compiler's own suite (no dependencies)
+npm install                 # links the workspace packages and puts `zal` on the path
+cd example && npx zal dev   # preview + live reload on http://localhost:5173
+npm test                    # the compiler's own suite (no dependencies)
 ```
-The compiler is `zal.mjs` (no dependencies). A Zal **project** is two directories — `zal/`, which
+The compiler has no dependencies. It is `@zal/core` — this document's grammar, the `ui.zal`
+design system and the build pipeline — plus one target package that generates the code:
+`@zal/react` today. A Zal **project** is two directories — `zal/`, which
 is everything hand-written, and `application/`, which `zal build` writes — and `example/` is one.
 Every command runs in the project directory.
 

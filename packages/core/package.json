@@ -1,0 +1,14 @@
+{
+  "name": "@zal/core",
+  "version": "0.1.0",
+  "description": "The Zal language: lexer, parser, design system and build pipeline — with no framework of its own.",
+  "keywords": ["zal", "dsl", "compiler", "codegen"],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./*": "./src/*"
+  },
+  "files": ["src", "SPEC.md", "README.md"],
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=20" }
+}
