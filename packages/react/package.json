@@ -2,16 +2,36 @@
   "name": "@zal/react",
   "version": "0.1.0",
   "description": "The React target for Zal: compiles .zal sources to a standalone React app.",
-  "keywords": ["zal", "react", "dsl", "compiler", "codegen"],
+  "keywords": [
+    "zal",
+    "react",
+    "dsl",
+    "compiler",
+    "codegen"
+  ],
   "type": "module",
   "exports": {
     ".": "./src/index.mjs",
     "./*": "./src/*"
   },
-  "files": ["src", "README.md"],
+  "files": [
+    "src",
+    "README.md"
+  ],
   "dependencies": {
     "@zal/core": "^0.1.0"
   },
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=20" }
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zal/framework.git",
+    "directory": "packages/react"
+  },
+  "homepage": "https://github.com/zal/framework/tree/main/packages/react",
+  "bugs": "https://github.com/zal/framework/issues"
 }

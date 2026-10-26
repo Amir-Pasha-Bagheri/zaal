@@ -19,5 +19,5 @@ standalone React app with its own `package.json`, `vite.config.js`, `index.html`
 which is the folder to commit, install and deploy. `zal dev` previews it without installing
 anything, from `.zal-dev/`, and leaves `application/` untouched.
 
-The language is **[SPEC.md](../../SPEC.md)**. The compiler is [`@zal/core`](../core) plus a
-target — [`@zal/react`](../react) today.
+The language is **[SPEC.md](https://github.com/zal/framework/blob/main/SPEC.md)**. The compiler is [`@zal/core`](https://github.com/zal/framework/tree/main/packages/core) plus a
+target — [`@zal/react`](https://github.com/zal/framework/tree/main/packages/react) today.

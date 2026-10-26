@@ -2,10 +2,10 @@
 
 The Zal language, with no framework of its own: the lexer, the parser, the `ui.zal` design
 system, and the pipeline that reads a project, compiles every source against it and writes the
-output. See **[SPEC.md](../../SPEC.md)** for the language itself.
+output. See **[SPEC.md](https://github.com/zal/framework/blob/main/SPEC.md)** for the language itself.
 
-This package generates no code. That is a target's job — [`@zal/react`](../react) is the first
-one. If you are building an app, install a target (or [`@zal/cli`](../cli)); install `@zal/core`
+This package generates no code. That is a target's job — [`@zal/react`](https://github.com/zal/framework/tree/main/packages/react) is the first
+one. If you are building an app, install a target (or [`@zal/cli`](https://github.com/zal/framework/tree/main/packages/cli)); install `@zal/core`
 directly only to write a target of your own, or to use the parser on its own.
 
 ## A target

@@ -28,7 +28,7 @@ system, one build pipeline — and a target package per framework.
 
 | | | |
 | --- | --- | --- |
-| **[zal](https://github.com/zal/zal)** | the monorepo | every package below |
+| **[zal/framework](https://github.com/zal/framework)** | the repo | every package below |
 | `@zal/core` | the language | lexer, parser, `ui.zal` design system, build pipeline |
 | `@zal/react` | the React target | ships today |
 | `@zal/cli` | the `zal` command | build, preview, live-reload |
@@ -39,8 +39,8 @@ names a framework itself.
 
 ### Start here
 
-- **[The spec](https://github.com/zal/zal/blob/main/SPEC.md)** — the whole language. Everything
+- **[The spec](https://github.com/zal/framework/blob/main/SPEC.md)** — the whole language. Everything
   in it is implemented and tested.
-- **[The roadmap](https://github.com/zal/zal/blob/main/ROADMAP.md)** — what Zal cannot say yet.
-- **[The example](https://github.com/zal/zal/tree/main/example)** — a small app with routes,
+- **[The roadmap](https://github.com/zal/framework/blob/main/ROADMAP.md)** — what Zal cannot say yet.
+- **[The example](https://github.com/zal/framework/tree/main/example)** — a small app with routes,
   stores, a design system and two npm packages.

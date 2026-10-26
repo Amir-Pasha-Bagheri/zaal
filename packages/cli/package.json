@@ -2,15 +2,37 @@
   "name": "@zal/cli",
   "version": "0.1.0",
   "description": "The `zal` command: build, preview and live-reload a Zal project.",
-  "keywords": ["zal", "cli"],
+  "keywords": [
+    "zal",
+    "cli"
+  ],
   "type": "module",
-  "bin": { "zal": "./bin/zal" },
-  "exports": { ".": "./src/index.mjs" },
-  "files": ["src", "bin", "README.md"],
+  "bin": {
+    "zal": "./bin/zal"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "src",
+    "bin",
+    "README.md"
+  ],
   "dependencies": {
     "@zal/core": "^0.1.0",
     "@zal/react": "^0.1.0"
   },
-  "publishConfig": { "access": "public" },
-  "engines": { "node": ">=20" }
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zal/framework.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/zal/framework/tree/main/packages/cli",
+  "bugs": "https://github.com/zal/framework/issues"
 }

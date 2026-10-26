@@ -1,9 +1,9 @@
 # @zal/react
 
 The React target for Zal: compiles `.zal` sources into a standalone React app. The language it
-compiles is [`@zal/core`](../core)'s; see **[SPEC.md](../../SPEC.md)** for it.
+compiles is [`@zal/core`](https://github.com/zal/framework/tree/main/packages/core)'s; see **[SPEC.md](https://github.com/zal/framework/blob/main/SPEC.md)** for it.
 
-Most people want [`@zal/cli`](../cli) instead — this package is the compiler, not the command.
+Most people want [`@zal/cli`](https://github.com/zal/framework/tree/main/packages/cli) instead — this package is the compiler, not the command.
 
 ```js
 import { build, compile } from '@zal/react';

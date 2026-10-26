@@ -19,8 +19,10 @@ every manifest here carries:
 
 ## One repo, many packages
 
-Package names do not have to match repo layout. Everything publishes from this one repo, and
-splitting a target into its own repo later renames nothing. The reason to keep one repo: a change
+Everything publishes from one repo, `zal/framework`. The packages are what carry the names —
+npm spells a scoped package `@zal/react`, so `packages/react/` is published as `@zal/react` and
+read as "zal/react" wherever it is installed. Package names do not have to match repo layout,
+and splitting a target into its own repo later would rename nothing. The reason to keep one repo: a change
 to the parser plus every target that consumes it is one commit, one test run, one CI job. Vite,
 Babel, Vue and Angular are all laid out this way.
 
@@ -48,12 +50,9 @@ Before the first publish, two things are still open:
 - **A license.** No package carries a `license` field yet, so npm will warn and the code is
   "all rights reserved" by default. Pick one (MIT is the usual choice for this kind of tool),
   add a `LICENSE` file, and add `"license": "MIT"` to all three manifests.
-- **`repository` fields.** Add one per package once the GitHub remote exists, so each npm page
-  links back to its own directory:
-
-  ```json
-  "repository": { "type": "git", "url": "git+https://github.com/zal/zal.git", "directory": "packages/core" }
-  ```
+`repository`, `homepage` and `bugs` are already set on all three, each pointing at its own
+directory, so every npm page links back to the right place. They assume the repo is
+`github.com/zal/framework` — if you name it something else, change them.
 
 ## Adding a target
 
