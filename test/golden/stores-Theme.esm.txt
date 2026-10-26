@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useContext, createContext, createElement as h, Fragment as F } from 'react';
 
-const KEY = "zal:theme";
+const KEY = "zaal:theme";
 const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } })();
 
 export const ThemeContext = createContext(null);

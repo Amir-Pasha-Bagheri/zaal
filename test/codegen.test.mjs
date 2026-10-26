@@ -2,7 +2,7 @@
 // slots beside children, and the two backends agreeing with each other.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { compile } from '../zal.mjs';
+import { compile } from '../zaal.mjs';
 
 const jsx = (src, opts) => compile(src, 'jsx', opts);
 const esm = (src, opts) => compile(src, 'esm', opts);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useContext, createContext } from 'react';
 
-const KEY = "zal:caught";
+const KEY = "zaal:caught";
 const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } })();
 
 export const CaughtContext = createContext(null);

@@ -7,7 +7,7 @@ export default function About() {
     <main className="page">
       <Nav />
       <Panel title="About" actions={<Link to="/">back home</Link>}>
-        <p>Components live in .zal files; the look lives in ui.zal.</p>
+        <p>Components live in .zaal files; the look lives in ui.zaal.</p>
         <p>Nest by indentation; {'{'}children{'}'} renders whatever the caller nested.</p>
       </Panel>
     </main>

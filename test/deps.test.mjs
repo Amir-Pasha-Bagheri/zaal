@@ -2,7 +2,7 @@
 // left out. These are the arrays React lints people about, so they are worth pinning down.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { compile } from '../zal.mjs';
+import { compile } from '../zaal.mjs';
 
 const jsx = (src, opts) => compile(src, 'jsx', opts);
 const deps = out => [...out.matchAll(/\}, \[([^\]]*)\]\);/g)].map(m => m[1]);

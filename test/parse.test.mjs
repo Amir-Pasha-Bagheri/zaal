@@ -2,7 +2,7 @@
 // the odd corners of each head line.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { compile, parseUI, parseApp } from '../zal.mjs';
+import { compile, parseUI, parseApp } from '../zaal.mjs';
 
 const jsx = (src, opts) => compile(src, 'jsx', opts);
 const esm = (src, opts) => compile(src, 'esm', opts);

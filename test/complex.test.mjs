@@ -12,10 +12,10 @@ import { projectDir, buildIn, read, runProject, cleanup } from './helpers/fixtur
 after(cleanup);
 
 const APP = {
-  'zal/app.zal': `A Board
+  'zaal/app.zaal': `A Board
   t "Board"
   m #app
-  ui ./ui.zal
+  ui ./ui.zaal
   css ./styles/extra.css
   pkg canvas-confetti@1.9.3
   store Theme Board
@@ -23,7 +23,7 @@ const APP = {
   /team/:id Member
   /stats Stats lazy
 `,
-  'zal/ui.zal': `D Board
+  'zaal/ui.zaal': `D Board
 t color
   bg #fff
   fg #111
@@ -68,13 +68,13 @@ k field label
 k hint p
   fg $color.muted
 `,
-  'zal/styles/extra.css': '.print-only { display: none }\n',
+  'zaal/styles/extra.css': '.print-only { display: none }\n',
 
-  'zal/stores/Theme.zal': `S Theme persist s:mode="light"
+  'zaal/stores/Theme.zaal': `S Theme persist s:mode="light"
   cb toggle() = mode = mode == "dark" ? "light" : "dark"
   fx document.documentElement.dataset.theme = mode
 `,
-  'zal/stores/Board.zal': `// columns of cards, each card with tags: the shape the nested maps render
+  'zaal/stores/Board.zaal': `// columns of cards, each card with tags: the shape the nested maps render
 S Board persist=board:v1 s:columns=[] s:filter=""
   use { mode } = Theme
   memo total = columns.reduce((n, c) => n + c.cards.length, 0)
@@ -86,15 +86,15 @@ S Board persist=board:v1 s:columns=[] s:filter=""
   memo theme = "{mode}"
 `,
 
-  'zal/components/ui/Field.zal': `C Field p:label
+  'zaal/components/ui/Field.zaal': `C Field p:label
   %field
     "{label}"
     input ...rest
 `,
-  'zal/components/ui/Chip.zal': `C Chip memo p:text p:tone="plain"
+  'zaal/components/ui/Chip.zaal': `C Chip memo p:text p:tone="plain"
   %chip "{tone == "warn" ? "! " : ""}{text}"
 `,
-  'zal/components/Card.zal': `i Chip ./ui/Chip
+  'zaal/components/Card.zaal': `i Chip ./ui/Chip
 C Card p:card p:onToggle
   %card
     %row
@@ -109,7 +109,7 @@ C Card p:card p:onToggle
       *card.tags as t k=t
         Chip text=t tone="plain"
 `,
-  'zal/components/Column.zal': `i Card ./Card
+  'zaal/components/Column.zaal': `i Card ./Card
 C Column p:column p:onToggle p:actions=null
   %card
     %row
@@ -124,13 +124,13 @@ C Column p:column p:onToggle p:actions=null
     :
       %hint "empty"
 `,
-  'zal/components/Boundary.zal': `C Boundary catch p:title="Board broke"
+  'zaal/components/Boundary.zaal': `C Boundary catch p:title="Board broke"
   %card
     h3 "{title}"
     p "{error.message}"
     button @click=reset "retry"
 `,
-  'zal/components/Toolbar.zal': `i confetti canvas-confetti
+  'zaal/components/Toolbar.zaal': `i confetti canvas-confetti
 i Field ./ui/Field
 C Toolbar p:onAdd s:draft=""
   use { total, filter, filterBy } = Board
@@ -148,7 +148,7 @@ C Toolbar p:onAdd s:draft=""
     %chip "{badge}"
     %btn.ghost @click=toggle "{mode}"
 `,
-  'zal/pages/Home.zal': `i Toolbar ../components/Toolbar
+  'zaal/pages/Home.zaal': `i Toolbar ../components/Toolbar
 i Column ../components/Column
 i Boundary ../components/Boundary
 C Home
@@ -169,12 +169,12 @@ C Home
       :
         %hint "no columns yet"
 `,
-  'zal/pages/Member.zal': `C Member p:id
+  'zaal/pages/Member.zaal': `C Member p:id
   %page
     h1 "Member {id}"
     Link to="/" "back"
 `,
-  'zal/pages/Stats.zal': `C Stats
+  'zaal/pages/Stats.zaal': `C Stats
   use { total } = Board
   %page
     h1 "{total} cards"
@@ -194,7 +194,7 @@ test('the whole app compiles for both backends', () => {
   const esm = buildIn(root, 'esm');
   assert.deepEqual(esm.warnings, []);
   for (const f of esm.made) {
-    const file = join(root, '.zal-dev', f.replace(/\.jsx$/, '.js'));
+    const file = join(root, '.zaal-dev', f.replace(/\.jsx$/, '.js'));
     try { execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' }); }
     catch (e) { assert.fail(`${f}: ${e.stderr}`); }
   }
@@ -271,7 +271,7 @@ test('the app runs: nested maps, slots, stores, filters and the boundary', async
   assert.match(app.html, />dark</);
 
   // both stores persisted under their own keys
-  assert.equal(env.saved('zal:theme').mode, 'dark');
+  assert.equal(env.saved('zaal:theme').mode, 'dark');
   assert.equal(env.saved('board:v1').columns[0].title, 'Todo');
 });
 

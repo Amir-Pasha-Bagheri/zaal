@@ -1,9 +1,9 @@
 {
-  "name": "@zal/core",
+  "name": "@zaal/core",
   "version": "0.1.0",
-  "description": "The Zal language: lexer, parser, design system and build pipeline — with no framework of its own.",
+  "description": "The Zaal language: lexer, parser, design system and build pipeline — with no framework of its own.",
   "keywords": [
-    "zal",
+    "zaal",
     "dsl",
     "compiler",
     "codegen"
@@ -25,9 +25,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zal/framework.git",
+    "url": "git+https://github.com/YOUR-USERNAME/zaal.git",
     "directory": "packages/core"
   },
-  "homepage": "https://github.com/zal/framework/tree/main/packages/core",
-  "bugs": "https://github.com/zal/framework/issues"
+  "homepage": "https://github.com/YOUR-USERNAME/zaal/tree/main/packages/core",
+  "bugs": "https://github.com/YOUR-USERNAME/zaal/issues"
 }

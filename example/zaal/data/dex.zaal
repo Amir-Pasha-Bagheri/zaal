@@ -1,4 +1,4 @@
-// A plain data module: a .zal file of `js` lines compiles to exactly those lines. Used when the
+// A plain data module: a .zaal file of `js` lines compiles to exactly those lines. Used when the
 // network is not there, so the app still renders something real.
 js export const FALLBACK = [
   { name: "bulbasaur" },

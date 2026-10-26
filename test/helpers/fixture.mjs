@@ -1,14 +1,14 @@
-// Build a Zal project in a scratch directory, then (optionally) import and run what it wrote.
+// Build a Zaal project in a scratch directory, then (optionally) import and run what it wrote.
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { build, project } from '../../zal.mjs';
+import { build, project } from '../../zaal.mjs';
 import { installEnv } from './env.mjs';
 
 const roots = [];
 
 export function projectDir(files) {
-  const root = mkdtempSync(join(tmpdir(), 'zal-test-'));
+  const root = mkdtempSync(join(tmpdir(), 'zaal-test-'));
   roots.push(root);
   for (const [path, body] of Object.entries(files)) {
     const full = join(root, path);
@@ -36,13 +36,13 @@ export async function runProject(root, { hash = '#/', fetch } = {}) {
 
 // The example/ project that ships with the compiler, copied so a build cannot disturb it.
 export function exampleDir() {
-  const src = new URL('../../example/zal/', import.meta.url).pathname;
+  const src = new URL('../../example/zaal/', import.meta.url).pathname;
   const files = {};
   const walk = (dir, prefix) => {
     for (const name of readdirSync(dir, { withFileTypes: true })) {
       if (name.isDirectory()) walk(join(dir, name.name), `${prefix}${name.name}/`);
       // text for sources, bytes for assets: the example ships a .png
-      else files[`zal/${prefix}${name.name}`] = /\.(zal|css|json|txt|md)$/.test(name.name)
+      else files[`zaal/${prefix}${name.name}`] = /\.(zaal|css|json|txt|md)$/.test(name.name)
         ? readFileSync(join(dir, name.name), 'utf8') : readFileSync(join(dir, name.name));
     }
   };

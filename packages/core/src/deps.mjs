@@ -20,13 +20,13 @@ function splitSpec(spec) {
 // Record a bare import; returns the specifier the generated code should name. Versions are
 // stripped from the code and kept in one place (the import map, or package.json).
 // `builtin` matches the packages the target puts in scope itself: React lives in the import map
-// at the version app.zal pins, and re-entering it here would overwrite that entry with an
+// at the version app.zaal pins, and re-entering it here would overwrite that entry with an
 // unpinned copy — a second React on the page, and every hook in the app throwing. `external`
 // is the query the CDN needs so a package borrows those rather than shipping its own.
 function pkgRef(spec, { pkgs, pins, cdn = CDN, builtin = null, external = '' } = {}) {
   const { pkg, version, sub } = splitSpec(spec);
   if (builtin?.test(pkg)) return { pkg, version: null, css: false, id: pkg + sub };
-  const pin = pins?.get(pkg) || null;                            // a pin in app.zal wins
+  const pin = pins?.get(pkg) || null;                            // a pin in app.zaal wins
   const v = pin || version;
   const id = pkg + sub, css = /\.css$/.test(sub);
   const entry = { pkg, version: v, css, url: `${cdn}/${pkg}${v ? '@' + v : ''}${sub}${css ? '' : external}` };

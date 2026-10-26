@@ -1,14 +1,14 @@
 {
-  "name": "@zal/cli",
+  "name": "@zaal/cli",
   "version": "0.1.0",
-  "description": "The `zal` command: build, preview and live-reload a Zal project.",
+  "description": "The `zaal` command: build, preview and live-reload a Zaal project.",
   "keywords": [
-    "zal",
+    "zaal",
     "cli"
   ],
   "type": "module",
   "bin": {
-    "zal": "./bin/zal"
+    "zaal": "./bin/zaal"
   },
   "exports": {
     ".": "./src/index.mjs"
@@ -19,8 +19,8 @@
     "README.md"
   ],
   "dependencies": {
-    "@zal/core": "^0.1.0",
-    "@zal/react": "^0.1.0"
+    "@zaal/core": "^0.1.0",
+    "@zaal/react": "^0.1.0"
   },
   "publishConfig": {
     "access": "public"
@@ -30,9 +30,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zal/framework.git",
+    "url": "git+https://github.com/YOUR-USERNAME/zaal.git",
     "directory": "packages/cli"
   },
-  "homepage": "https://github.com/zal/framework/tree/main/packages/cli",
-  "bugs": "https://github.com/zal/framework/issues"
+  "homepage": "https://github.com/YOUR-USERNAME/zaal/tree/main/packages/cli",
+  "bugs": "https://github.com/YOUR-USERNAME/zaal/issues"
 }

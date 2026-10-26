@@ -1,4 +1,4 @@
-/* Zal — tokens, base elements and the UI kit */
+/* Zaal — tokens, base elements and the UI kit */
 
 :root {
   color-scheme: light dark;

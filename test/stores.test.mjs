@@ -1,7 +1,7 @@
 // `S Name` — context + provider + use<Name>(), persistence, and reading a store from a component.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { compile } from '../zal.mjs';
+import { compile } from '../zaal.mjs';
 
 const stores = new Map([['Todos', 'stores/Todos'], ['Theme', 'stores/Theme']]);
 const jsx = (src, opts = {}) => compile(src, 'jsx', { stores, ...opts });
@@ -34,7 +34,7 @@ test('store state assignment inside its own actions becomes a setter', () => {
 
 test('persist seeds from localStorage and writes back on change', () => {
   const out = jsx('S Theme persist s:mode="light"\n  cb toggle() = mode = mode == "dark" ? "light" : "dark"\n');
-  assert.match(out, /const KEY = "zal:theme";/);
+  assert.match(out, /const KEY = "zaal:theme";/);
   assert.match(out, /JSON\.parse\(localStorage\.getItem\(KEY\)\)/);
   assert.match(out, /useState\(saved\.mode \?\? "light"\)/);
   assert.match(out, /localStorage\.setItem\(KEY, JSON\.stringify\(\{ mode \}\)\)/);

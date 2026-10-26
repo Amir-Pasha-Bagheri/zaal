@@ -2,7 +2,7 @@
 // broken JavaScript, plus the warnings a build reports without failing.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { compile, parseApp } from '../zal.mjs';
+import { compile, parseApp } from '../zaal.mjs';
 import { projectDir, buildIn, cleanup } from './helpers/fixture.mjs';
 
 after(cleanup);
@@ -38,7 +38,7 @@ test('a prop or state name has to be a name', () => {
   throws('C A catch p:4w\n  p "x"\n', /p:4w: `4w` is not a name/);
 });
 
-test('an unknown directive in app.zal is an error, not a silent no-op', () => {
+test('an unknown directive in app.zaal is an error, not a silent no-op', () => {
   assert.throws(() => parseApp('A D\n  stores Theme\n  / Home\n'), /app: unknown directive `stores`/);
   assert.throws(() => parseApp('A D\n  title "x"\n'), /app: unknown directive `title`/);
 });
@@ -78,58 +78,58 @@ test('a component may render itself', () => {
 
 test('errors from a nested source name the full path and line', () => {
   const root = projectDir({
-    'zal/app.zal': 'A D\n  / Home\n',
-    'zal/Home.zal': 'C Home\n  h1 "h"\n',
-    'zal/a/b/Broken.zal': 'C Broken\n  div\n    p "ok"\n    fx log(1)\n',
+    'zaal/app.zaal': 'A D\n  / Home\n',
+    'zaal/Home.zaal': 'C Home\n  h1 "h"\n',
+    'zaal/a/b/Broken.zaal': 'C Broken\n  div\n    p "ok"\n    fx log(1)\n',
   });
   assert.throws(() => buildIn(root), e => {
-    assert.match(e.message, /^zal\/a\/b\/Broken\.zal:4 {2}hook lines must be direct children of `C`/);
+    assert.match(e.message, /^zaal\/a\/b\/Broken\.zaal:4 {2}hook lines must be direct children of `C`/);
     return true;
   });
 });
 
 test('one component name in two files is a warning that names both', () => {
   const root = projectDir({
-    'zal/app.zal': 'A D\n  / Home\n',
-    'zal/Home.zal': 'C Home\n  h1 "h"\n',
-    'zal/a/Row.zal': 'C Row\n  tr\n',
-    'zal/b/Row.zal': 'C Row\n  tr\n',
+    'zaal/app.zaal': 'A D\n  / Home\n',
+    'zaal/Home.zaal': 'C Home\n  h1 "h"\n',
+    'zaal/a/Row.zaal': 'C Row\n  tr\n',
+    'zaal/b/Row.zaal': 'C Row\n  tr\n',
   });
   const out = buildIn(root);
-  assert.deepEqual(out.warnings, ['C Row is declared in both a/Row.zal and b/Row.zal']);
+  assert.deepEqual(out.warnings, ['C Row is declared in both a/Row.zaal and b/Row.zaal']);
 });
 
 test('one store name in two files is a warning too', () => {
   const root = projectDir({
-    'zal/app.zal': 'A D\n  / Home\n',
-    'zal/Home.zal': 'C Home\n  h1 "h"\n',
-    'zal/x/Cart.zal': 'S Cart s:items=[]\n  cb add(i) = items=[...items,i]\n',
-    'zal/y/Cart.zal': 'S Cart s:items=[]\n  cb add(i) = items=[...items,i]\n',
+    'zaal/app.zaal': 'A D\n  / Home\n',
+    'zaal/Home.zaal': 'C Home\n  h1 "h"\n',
+    'zaal/x/Cart.zaal': 'S Cart s:items=[]\n  cb add(i) = items=[...items,i]\n',
+    'zaal/y/Cart.zaal': 'S Cart s:items=[]\n  cb add(i) = items=[...items,i]\n',
   });
-  assert.ok(buildIn(root).warnings.some(w => /S Cart is declared in both x\/Cart\.zal and y\/Cart\.zal/.test(w)));
+  assert.ok(buildIn(root).warnings.some(w => /S Cart is declared in both x\/Cart\.zaal and y\/Cart\.zaal/.test(w)));
 });
 
 test('the same name in one file across C and S is still caught per file', () => {
   const root = projectDir({
-    'zal/app.zal': 'A D\n  / Home\n',
-    'zal/Home.zal': 'C Home\n  h1 "h"\nS Home s:n=0\n  cb up() = n++\n',
+    'zaal/app.zaal': 'A D\n  / Home\n',
+    'zaal/Home.zaal': 'C Home\n  h1 "h"\nS Home s:n=0\n  cb up() = n++\n',
   });
   assert.throws(() => buildIn(root), /Home is declared twice in this file/);
 });
 
 test('a route pointing at a store says there is no such component', () => {
   const root = projectDir({
-    'zal/app.zal': 'A D\n  / Cart\n',
-    'zal/Cart.zal': 'S Cart s:items=[]\n  cb add(i) = items=[...items,i]\n',
+    'zaal/app.zaal': 'A D\n  / Cart\n',
+    'zaal/Cart.zaal': 'S Cart s:items=[]\n  cb add(i) = items=[...items,i]\n',
   });
-  assert.throws(() => buildIn(root), /route \/: no `C Cart` in zal\//);
+  assert.throws(() => buildIn(root), /route \/: no `C Cart` in zaal\//);
 });
 
 test('warnings do not stop a build from writing its output', () => {
   const root = projectDir({
-    'zal/app.zal': 'A D\n  ui ./ui.zal\n  / Home\n',
-    'zal/ui.zal': 'D U\nk page main\n  p 0\n',
-    'zal/Home.zal': 'i d lodash/debounce\nC Home\n  %page.mystery "{d}"\n',
+    'zaal/app.zaal': 'A D\n  ui ./ui.zaal\n  / Home\n',
+    'zaal/ui.zaal': 'D U\nk page main\n  p 0\n',
+    'zaal/Home.zaal': 'i d lodash/debounce\nC Home\n  %page.mystery "{d}"\n',
   });
   const out = buildIn(root);
   assert.equal(out.warnings.length, 2, out.warnings.join(' | '));

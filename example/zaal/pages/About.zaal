@@ -6,5 +6,5 @@ C About
     Panel title="About"
       slot actions
         Link to="/" "back home"
-      p "Components live in .zal files; the look lives in ui.zal."
+      p "Components live in .zaal files; the look lives in ui.zaal."
       p "Nest by indentation; \{children\} renders whatever the caller nested."

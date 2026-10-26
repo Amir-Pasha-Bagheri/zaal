@@ -1,7 +1,7 @@
 // Hook lines: fx, memo, cb, ref, ctx, use — bodies, cleanup and dependency inference.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { compile } from '../zal.mjs';
+import { compile } from '../zaal.mjs';
 
 const jsx = (src, opts) => compile(src, 'jsx', opts);
 

@@ -1,5 +1,5 @@
 // Indentation -> a tree of nodes. Nothing here knows what framework the tree compiles to:
-// `C`, `S`, `use`, `fx` and the markup selectors are Zal's own grammar.
+// `C`, `S`, `use`, `fx` and the markup selectors are Zaal's own grammar.
 import { tokens } from './lex.mjs';
 import { here, fail } from './diagnostics.mjs';
 
@@ -128,7 +128,7 @@ function selector(s) {
 // `motion.div`, `Dialog.Panel` — a dotted tag whose first segment is a name the module has
 // (an `i` line or a `js` declaration) is a member of it, not a tag with classes. Nothing else
 // can tell the two apart: `div.card` and `motion.div` are the same shape. Case decides the rest,
-// the way it decides everywhere else in Zal: `Card.wide` is still a class on <Card>, because a
+// the way it decides everywhere else in Zaal: `Card.wide` is still a class on <Card>, because a
 // class is lower-case and a component is not.
 const isMember = (tag, next) => /^[a-z]/.test(tag) || /^[A-Z]/.test(next);
 

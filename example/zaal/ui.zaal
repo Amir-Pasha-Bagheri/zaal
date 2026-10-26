@@ -1,4 +1,4 @@
-D Zal                   // design system — the single source of truth for every .zal in this app
+D Zaal                   // design system — the single source of truth for every .zaal in this app
 
 // ── tokens ────────────────────────────────────  `t <group>` -> :root { --<group>-<name>: value }
 t color
@@ -190,7 +190,7 @@ k pill span
   size $size.sm
   fg $color.muted
 
-k badge zal-badge
+k badge zaal-badge
   display inline-block
   bg $color.surface
   border 1px dashed $color.line

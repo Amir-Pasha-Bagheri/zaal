@@ -3,7 +3,7 @@
 
 const REACT_V = '19.1.0';
 
-// React lives in the import map at the version app.zal pins, so a package must borrow it rather
+// React lives in the import map at the version app.zaal pins, so a package must borrow it rather
 // than ship its own copy — two Reacts on a page means every hook throws.
 const EXTERNAL = '?external=react,react-dom';
 const BUILTIN = /^(react|react-dom)$/;

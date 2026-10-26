@@ -1,4 +1,4 @@
-// Split a .zal line into tokens.
+// Split a .zaal line into tokens.
 
 // Split a line on spaces, ignoring spaces inside "" or ()[]{}. A `{…}` inside a string is an
 // interpolated expression, and the quotes in it belong to that expression, not to the string:

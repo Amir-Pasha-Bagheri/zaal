@@ -1,9 +1,9 @@
-// @zal/react — the React target for Zal. Everything React-specific about the compiler lives
-// in this package; @zal/core owns the grammar, the design system and the build pipeline.
+// @zaal/react — the React target for Zaal. Everything React-specific about the compiler lives
+// in this package; @zaal/core owns the grammar, the design system and the build pipeline.
 //
 // A target is an object: which code shapes ("backends") it can emit, and how it writes each
-// file of the output. @zal/core's `build` asks it those questions and never names React.
-import { APP_DIR, DEV_DIR, build as coreBuild, watchAndServe as coreWatch } from '@zal/core';
+// file of the output. @zaal/core's `build` asks it those questions and never names React.
+import { APP_DIR, DEV_DIR, build as coreBuild, watchAndServe as coreWatch } from '@zaal/core';
 import { compile } from './compile.mjs';
 import { router, mainFile, html } from './app.mjs';
 import { scaffold } from './imports.mjs';
@@ -12,7 +12,7 @@ const react = {
   name: 'react',
   // `jsx` is the deliverable: a real Vite project in application/, which is what a developer
   // installs, runs and commits. `esm` is createElement calls served straight from disk, so
-  // `zal dev` can preview the app without installing anything.
+  // `zaal dev` can preview the app without installing anything.
   default: 'jsx',
   preview: 'esm',
   backends: {

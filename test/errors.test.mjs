@@ -1,7 +1,7 @@
 // Diagnostics: every mistake the compiler is supposed to catch, and the line it names.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { compile } from '../zal.mjs';
+import { compile } from '../zaal.mjs';
 import { projectDir, buildIn, has, cleanup } from './helpers/fixture.mjs';
 
 after(cleanup);
@@ -18,16 +18,16 @@ test('a class with no kit entry is a warning, not an error', () => {
   compile('C A\n  .mystery "x"\n', 'jsx', { ui: UI, used });
   assert.ok(used.has('mystery'));
   const root = projectDir({
-    'zal/app.zal': 'A Demo\n  ui ./ui.zal\n  / Home\n',
-    'zal/ui.zal': 'D T\nk card section\n  p 0\n',
-    'zal/Home.zal': 'C Home\n  .mystery "x"\n',
+    'zaal/app.zaal': 'A Demo\n  ui ./ui.zaal\n  / Home\n',
+    'zaal/ui.zaal': 'D T\nk card section\n  p 0\n',
+    'zaal/Home.zaal': 'C Home\n  .mystery "x"\n',
   });
   const out = buildIn(root);
-  assert.deepEqual(out.warnings, ['Home.zal: class .mystery is not in the UI kit']);
+  assert.deepEqual(out.warnings, ['Home.zaal: class .mystery is not in the UI kit']);
 });
 
 test('a component that is not in scope is an error with a fix', () => {
-  throws('C A\n  Missing\n', /<Missing> is not in scope — no `C Missing` in zal\/, and no `i` line for it/);
+  throws('C A\n  Missing\n', /<Missing> is not in scope — no `C Missing` in zaal\/, and no `i` line for it/);
 });
 
 test('a near-miss suggests the import line that would fix it', () => {
@@ -106,11 +106,11 @@ test('a bad selector is an error', () => {
 
 test('errors name the file and line, and quote the line', () => {
   const root = projectDir({
-    'zal/app.zal': 'A Demo\n  / Home\n',
-    'zal/Home.zal': 'C Home\n  div\n    p "ok"\n    %ghost "x"\n',
+    'zaal/app.zaal': 'A Demo\n  / Home\n',
+    'zaal/Home.zaal': 'C Home\n  div\n    p "ok"\n    %ghost "x"\n',
   });
   assert.throws(() => buildIn(root), e => {
-    assert.match(e.message, /^zal\/Home\.zal:4 {2}%ghost is not in the UI kit/);
+    assert.match(e.message, /^zaal\/Home\.zaal:4 {2}%ghost is not in the UI kit/);
     assert.match(e.message, /4 \| %ghost "x"/);
     return true;
   });
@@ -118,15 +118,15 @@ test('errors name the file and line, and quote the line', () => {
 
 test('a failed build writes nothing, so the last good output stays', async () => {
   const root = projectDir({
-    'zal/app.zal': 'A Demo\n  / Home\n',
-    'zal/Home.zal': 'C Home\n  h1 "first"\n',
+    'zaal/app.zaal': 'A Demo\n  / Home\n',
+    'zaal/Home.zaal': 'C Home\n  h1 "first"\n',
   });
   buildIn(root);
   const { writeFileSync, readFileSync } = await import('node:fs');
   const { join } = await import('node:path');
   const before = readFileSync(join(root, 'application/src/Home.jsx'), 'utf8');
-  writeFileSync(join(root, 'zal/Home.zal'), 'C Home\n  h1 "second"\n');
-  writeFileSync(join(root, 'zal/Broken.zal'), 'C Broken\n  Nope\n');
+  writeFileSync(join(root, 'zaal/Home.zaal'), 'C Home\n  h1 "second"\n');
+  writeFileSync(join(root, 'zaal/Broken.zaal'), 'C Broken\n  Nope\n');
   assert.throws(() => buildIn(root), /<Nope> is not in scope/);
   assert.equal(readFileSync(join(root, 'application/src/Home.jsx'), 'utf8'), before);
   assert.ok(!has(root, 'application/src/Broken.jsx'));

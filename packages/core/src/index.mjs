@@ -1,5 +1,5 @@
-// @zal/core — the parts of Zal that no target owns: the grammar, the design system, the
-// project pipeline. A target package (@zal/react, …) supplies the code generation.
+// @zaal/core — the parts of Zaal that no target owns: the grammar, the design system, the
+// project pipeline. A target package (@zaal/react, …) supplies the code generation.
 
 export { tokens } from './lex.mjs';
 export { here, fail, located, inFile } from './diagnostics.mjs';

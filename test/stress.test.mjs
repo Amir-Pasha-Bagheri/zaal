@@ -4,7 +4,7 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
-import { compile, parseUI, uiCss } from '../zal.mjs';
+import { compile, parseUI, uiCss } from '../zaal.mjs';
 import { projectDir, buildIn, cleanup } from './helpers/fixture.mjs';
 
 after(cleanup);
@@ -80,14 +80,14 @@ test('a design system with two hundred kit entries compiles', () => {
 
 test('a hundred and twenty sources build, and the modules parse', () => {
   const files = {
-    'zal/app.zal': 'A Big\n  ui ./ui.zal\n  store Hub\n  / Home\n',
-    'zal/ui.zal': 'D B\nt color\n  bg #fff\nk page main\n  bg $color.bg\nk card section\n  p 0\n',
-    'zal/stores/Hub.zal': 'S Hub persist s:open=[]\n  memo count = open.length\n'
+    'zaal/app.zaal': 'A Big\n  ui ./ui.zaal\n  store Hub\n  / Home\n',
+    'zaal/ui.zaal': 'D B\nt color\n  bg #fff\nk page main\n  bg $color.bg\nk card section\n  p 0\n',
+    'zaal/stores/Hub.zaal': 'S Hub persist s:open=[]\n  memo count = open.length\n'
       + '  cb toggle(id) = open=open.includes(id) ? open.filter(x => x !== id) : [...open, id]\n',
   };
   const names = Array.from({ length: 118 }, (_, i) => `P${i}`);
   for (const [i, n] of names.entries()) {
-    files[`zal/parts/d${i % 10}/${n}.zal`] = `C ${n} p:id="${n}"
+    files[`zaal/parts/d${i % 10}/${n}.zaal`] = `C ${n} p:id="${n}"
   use { open, toggle } = Hub
   memo mine = open.includes(id)
   %card
@@ -98,7 +98,7 @@ test('a hundred and twenty sources build, and the modules parse', () => {
       button @click=toggle(id) "open"
 `;
   }
-  files['zal/Home.zal'] = names.map((n, i) => `i ${n} ./parts/d${i % 10}/${n}`).join('\n')
+  files['zaal/Home.zaal'] = names.map((n, i) => `i ${n} ./parts/d${i % 10}/${n}`).join('\n')
     + '\nC Home\n  use { count } = Hub\n  %page\n    h1 "{count} open"\n'
     + names.map(n => `    ${n}`).join('\n') + '\n';
   const root = projectDir(files);
@@ -109,7 +109,7 @@ test('a hundred and twenty sources build, and the modules parse', () => {
   assert.ok(Date.now() - started < 20000, `build took ${Date.now() - started}ms`);
   const esm = buildIn(root, 'esm');
   for (const f of ['src/Home.js', 'src/parts/d0/P0.js', 'src/parts/d9/P99.js', 'src/stores/Hub.js', 'src/main.js']) {
-    execFileSync(process.execPath, ['--check', join(root, '.zal-dev', f)], { stdio: 'pipe' });
+    execFileSync(process.execPath, ['--check', join(root, '.zaal-dev', f)], { stdio: 'pipe' });
   }
   assert.equal(esm.made.length, 120);
 });

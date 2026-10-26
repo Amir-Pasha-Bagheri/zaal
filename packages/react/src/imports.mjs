@@ -1,12 +1,12 @@
 // `i` lines -> import statements, and the project files `application/` needs to be a React
-// app a developer can run without ever hearing about Zal.
+// app a developer can run without ever hearing about Zaal.
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fail, here, isRel, isAsset, pkgRef, posix, CDN } from '@zal/core';
+import { fail, here, isRel, isAsset, pkgRef, posix, CDN } from '@zaal/core';
 import { REACT_V, EXTERNAL, BUILTIN, VITE_V, PLUGIN_V } from './names.mjs';
 
 // react and react-dom are React's to provide: they are already in the import map at the version
-// app.zal pins, and re-entering them as packages would overwrite that with an unpinned copy.
+// app.zaal pins, and re-entering them as packages would overwrite that with an unpinned copy.
 // Every other package is told to borrow them rather than ship a React of its own.
 const ref = (spec, opts) => pkgRef(spec, { ...opts, builtin: BUILTIN, external: EXTERNAL });
 
@@ -14,7 +14,7 @@ function importLine(n, target, opts) {
   here(n);
   const ext = target === 'jsx' ? '.jsx' : '.js';
   if (n.spec !== undefined) {                                    // side-effect import
-    if (isRel(n.spec)) fail(n, `i ${n.spec}: a local stylesheet belongs in app.zal (\`css …\`)`);
+    if (isRel(n.spec)) fail(n, `i ${n.spec}: a local stylesheet belongs in app.zaal (\`css …\`)`);
     const { id, css } = ref(n.spec, opts);
     return css && target === 'esm' ? null : `import '${id}';`;   // esm links package css in <head>
   }

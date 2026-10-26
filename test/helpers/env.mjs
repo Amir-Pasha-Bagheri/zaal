@@ -58,7 +58,7 @@ export function installEnv({ hash = '#/', fetch: fetchImpl = cannedFetch } = {})
   globalThis.window = win;
   globalThis.document = doc;
   globalThis.localStorage = localStorage;
-  globalThis.navigator ??= { userAgent: 'zal-test' };
+  globalThis.navigator ??= { userAgent: 'zaal-test' };
   const realFetch = globalThis.fetch;
   globalThis.fetch = (url, opts) => fetchImpl(url, opts);
   globalThis.AbortController ??= class { constructor() { this.signal = {}; } abort() { this.aborted = true; } };

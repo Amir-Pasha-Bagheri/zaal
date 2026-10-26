@@ -58,7 +58,7 @@ function handler(ctx, expr) {
   return `(${arg}) => ${fnBody(list)}`;
 }
 
-// `k={expr}` is how JSX writes it; Zal writes `k=expr`. Take either — the braces are the habit
+// `k={expr}` is how JSX writes it; Zaal writes `k=expr`. Take either — the braces are the habit
 // JSX leaves behind, and passing `{null}` through lands a syntax error in the generated module
 // instead of here. An object literal (`style={color:"red"}`) is kept as the value it is.
 function unbrace(v) {

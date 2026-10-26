@@ -12,11 +12,11 @@ after(cleanup);
 
 // One build, one router module, reused by every case below.
 const root = projectDir({
-  'zal/app.zal': 'A R\n  / Home\n',
-  'zal/Home.zal': 'C Home\n  h1 "home"\n',
+  'zaal/app.zaal': 'A R\n  / Home\n',
+  'zaal/Home.zaal': 'C Home\n  h1 "home"\n',
 });
 buildIn(root, 'esm');
-const router = await import(join(root, '.zal-dev/src/router.js'));
+const router = await import(join(root, '.zaal-dev/src/router.js'));
 
 const Page = name => props => h('p', null, `${name}:${JSON.stringify(props)}`);
 
@@ -122,10 +122,10 @@ test('the listener is removed when the tree goes away', () => {
 
 test('a :param route and a lazy route coexist in one table', () => {
   const app = projectDir({
-    'zal/app.zal': 'A R\n  / Home\n  /u/:name Profile\n  /heavy Heavy lazy\n',
-    'zal/Home.zal': 'C Home\n  h1 "h"\n',
-    'zal/Profile.zal': 'C Profile p:name\n  h1 "{name}"\n',
-    'zal/Heavy.zal': 'C Heavy\n  h1 "big"\n',
+    'zaal/app.zaal': 'A R\n  / Home\n  /u/:name Profile\n  /heavy Heavy lazy\n',
+    'zaal/Home.zaal': 'C Home\n  h1 "h"\n',
+    'zaal/Profile.zaal': 'C Profile p:name\n  h1 "{name}"\n',
+    'zaal/Heavy.zaal': 'C Heavy\n  h1 "big"\n',
   });
   buildIn(app, 'esm');
   const main = buildIn(app, 'jsx');

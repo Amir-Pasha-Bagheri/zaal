@@ -1,14 +1,14 @@
 // A ~200-line React stand-in: enough of the real contract (hooks, context, memo, class error
-// boundaries) to *run* the modules Zal generates and assert on what they render. The compiler's
+// boundaries) to *run* the modules Zaal generates and assert on what they render. The compiler's
 // output imports 'react' / 'react-dom/client'; loader.mjs points those specifiers here.
 //
 // Render model: one synchronous pass over the whole tree per flush, hook state kept per tree
 // path, effects run after the pass, a setState during the pass schedules another one.
 
-export const Fragment = Symbol.for('zal.test.Fragment');
-export const StrictMode = Symbol.for('zal.test.StrictMode');
-export const Profiler = Symbol.for('zal.test.Profiler');
-export const Suspense = Symbol.for('zal.test.Suspense');
+export const Fragment = Symbol.for('zaal.test.Fragment');
+export const StrictMode = Symbol.for('zaal.test.StrictMode');
+export const Profiler = Symbol.for('zaal.test.Profiler');
+export const Suspense = Symbol.for('zaal.test.Suspense');
 
 export function createElement(type, props, ...kids) {
   const p = { ...(props || {}) };

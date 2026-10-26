@@ -1,6 +1,6 @@
 // Errors that name the line they came from, wherever in the compiler they were thrown.
 
-// Every error names the line that caused it — `zal/Home.zal:7  message` plus the line itself —
+// Every error names the line that caused it — `zaal/Home.zaal:7  message` plus the line itself —
 // so the message alone is enough to fix the mistake, without reopening the file to hunt for it.
 let AT = null;                         // the node being compiled, for throws deep inside codegen
 const here = n => { AT = n; return n; };

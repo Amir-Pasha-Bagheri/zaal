@@ -1,8 +1,8 @@
 // a custom element: a dashed tag is passed through to the DOM as it is written
-js if (typeof HTMLElement !== "undefined" && !customElements.get("zal-badge")) {
-  customElements.define("zal-badge", class extends HTMLElement {
+js if (typeof HTMLElement !== "undefined" && !customElements.get("zaal-badge")) {
+  customElements.define("zaal-badge", class extends HTMLElement {
     connectedCallback() { this.textContent = this.getAttribute("text") ?? ""; }
   });
   }
 C Badge p:text
-  zal-badge.badge text=text
+  zaal-badge.badge text=text

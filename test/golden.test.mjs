@@ -1,26 +1,26 @@
 // Byte-for-byte snapshots of what the compiler writes for the example sources. Any change to
 // codegen shows up here as a diff, so a formatting or ordering change has to be deliberate.
-// To accept a new snapshot: node --test test/golden.test.mjs with ZAL_GOLDEN=update.
+// To accept a new snapshot: node --test test/golden.test.mjs with ZAAL_GOLDEN=update.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { compile, project, uiCss } from '../zal.mjs';
+import { compile, project, uiCss } from '../zaal.mjs';
 
 const dir = new URL('./golden/', import.meta.url).pathname;
 const example = new URL('../example/', import.meta.url).pathname;
 const p = project({ root: example });
-const update = process.env.ZAL_GOLDEN === 'update';
+const update = process.env.ZAAL_GOLDEN === 'update';
 
 const check = (name, actual) => {
   const file = join(dir, name);
   if (update) { writeFileSync(file, actual); return; }
   assert.equal(actual, readFileSync(file, 'utf8'),
-    `${name} changed — rerun with ZAL_GOLDEN=update if the new output is intended`);
+    `${name} changed — rerun with ZAAL_GOLDEN=update if the new output is intended`);
 };
 
 const module_ = (path, target) => {
-  const src = readFileSync(join(example, 'zal', `${path}.zal`), 'utf8');
+  const src = readFileSync(join(example, 'zaal', `${path}.zaal`), 'utf8');
   const slash = path.lastIndexOf('/');
   return compile(src, target, { ui: p.ui, stores: p.stores, comps: p.comps, pins: p.app.pins,
     main: path.slice(slash + 1), dir: path.slice(0, slash) });

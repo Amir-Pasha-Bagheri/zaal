@@ -1,4 +1,4 @@
-// ui.zal -> CSS custom properties, base element rules and a UI kit. Plain CSS out, so every
+// ui.zaal -> CSS custom properties, base element rules and a UI kit. Plain CSS out, so every
 // target shares one design system.
 import { tokens } from './lex.mjs';
 import { fail } from './diagnostics.mjs';

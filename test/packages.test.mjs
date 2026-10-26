@@ -1,7 +1,7 @@
 // `i` lines: local modules, packages, named and default imports, versions and stylesheets.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { compile } from '../zal.mjs';
+import { compile } from '../zaal.mjs';
 import { projectDir, buildIn, read, cleanup } from './helpers/fixture.mjs';
 
 after(cleanup);
@@ -38,7 +38,7 @@ C A
   assert.match(out, /import debounce from 'lodash\/debounce';/);
 });
 
-test('a pin in app.zal wins over an inline version and reports the clash', () => {
+test('a pin in app.zaal wins over an inline version and reports the clash', () => {
   const pkgs = new Map(), pins = new Map([['canvas-confetti', '1.9.3']]);
   compile('i c canvas-confetti@1.8.0\nC A\n  p "x"\n', 'esm', { pkgs, pins });
   const entry = pkgs.get('canvas-confetti');
@@ -65,14 +65,14 @@ test('a side-effect stylesheet import: kept for the bundler, linked by the esm p
   assert.doesNotMatch(esm.out, /ReactToastify\.css/);
 });
 
-test('a local stylesheet on an `i` line points at app.zal instead', () => {
-  assert.throws(() => compile('i ./styles/x.css\nC A\n  p "x"\n'), /belongs in app\.zal/);
+test('a local stylesheet on an `i` line points at app.zaal instead', () => {
+  assert.throws(() => compile('i ./styles/x.css\nC A\n  p "x"\n'), /belongs in app\.zaal/);
 });
 
 test('a build adds every package to application/package.json dependencies', () => {
   const root = projectDir({
-    'zal/app.zal': 'A Demo\n  pkg canvas-confetti@1.9.3\n  / Home\n',
-    'zal/Home.zal': 'i confetti canvas-confetti\ni debounce lodash/debounce\nC Home\n'
+    'zaal/app.zaal': 'A Demo\n  pkg canvas-confetti@1.9.3\n  / Home\n',
+    'zaal/Home.zaal': 'i confetti canvas-confetti\ni debounce lodash/debounce\nC Home\n'
       + '  button @click=confetti() "{debounce}"\n',
   });
   const out = buildIn(root);
@@ -85,8 +85,8 @@ test('a build adds every package to application/package.json dependencies', () =
 
 test('a second build does not duplicate or reorder dependencies', () => {
   const root = projectDir({
-    'zal/app.zal': 'A Demo\n  pkg dayjs@1.11.0\n  / Home\n',
-    'zal/Home.zal': 'i dayjs dayjs\nC Home\n  p "{dayjs()}"\n',
+    'zaal/app.zaal': 'A Demo\n  pkg dayjs@1.11.0\n  / Home\n',
+    'zaal/Home.zaal': 'i dayjs dayjs\nC Home\n  p "{dayjs()}"\n',
   });
   buildIn(root);
   const first = read(root, 'application/package.json');
@@ -96,8 +96,8 @@ test('a second build does not duplicate or reorder dependencies', () => {
 
 test('hand edits to package.json and vite.config.js survive a rebuild', async () => {
   const root = projectDir({
-    'zal/app.zal': 'A Demo\n  / Home\n',
-    'zal/Home.zal': 'C Home\n  h1 "h"\n',
+    'zaal/app.zaal': 'A Demo\n  / Home\n',
+    'zaal/Home.zaal': 'C Home\n  h1 "h"\n',
   });
   buildIn(root);
   const { writeFileSync } = await import('node:fs');
@@ -114,20 +114,20 @@ test('hand edits to package.json and vite.config.js survive a rebuild', async ()
 
 test('`pkg react@…` moves the React the app installs and the preview loads', () => {
   const root = projectDir({
-    'zal/app.zal': 'A Demo\n  pkg react@19.2.0\n  pkg react-dom@19.2.0\n  / Home\n',
-    'zal/Home.zal': 'C Home\n  h1 "h"\n',
+    'zaal/app.zaal': 'A Demo\n  pkg react@19.2.0\n  pkg react-dom@19.2.0\n  / Home\n',
+    'zaal/Home.zaal': 'C Home\n  h1 "h"\n',
   });
   buildIn(root);
   assert.equal(JSON.parse(read(root, 'application/package.json')).dependencies.react, '^19.2.0');
   buildIn(root, 'esm');
-  assert.match(read(root, '.zal-dev/index.html'), /"react": "https:\/\/esm\.sh\/react@19\.2\.0"/);
+  assert.match(read(root, '.zaal-dev/index.html'), /"react": "https:\/\/esm\.sh\/react@19\.2\.0"/);
 });
 
 test('two files importing the same package at different versions warn once', () => {
   const root = projectDir({
-    'zal/app.zal': 'A Demo\n  / Home\n',
-    'zal/Home.zal': 'i d dayjs@1.11.0\nC Home\n  p "{d()}"\n',
-    'zal/Other.zal': 'i d dayjs@1.10.0\nC Other\n  p "{d()}"\n',
+    'zaal/app.zaal': 'A Demo\n  / Home\n',
+    'zaal/Home.zaal': 'i d dayjs@1.11.0\nC Home\n  p "{d()}"\n',
+    'zaal/Other.zaal': 'i d dayjs@1.10.0\nC Other\n  p "{d()}"\n',
   });
   const out = buildIn(root);
   assert.ok(out.warnings.some(w => /dayjs imported as both 1\.11\.0 and 1\.10\.0/.test(w)), out.warnings.join('|'));
@@ -137,12 +137,12 @@ test('two files importing the same package at different versions warn once', () 
 
 test('a package stylesheet is linked from the CDN in the esm preview', () => {
   const root = projectDir({
-    'zal/app.zal': 'A P\n  pkg react-toastify@10.0.5\n  / Home\n',
-    'zal/Home.zal': 'i react-toastify/dist/ReactToastify.css\ni { toast } from react-toastify\n'
+    'zaal/app.zaal': 'A P\n  pkg react-toastify@10.0.5\n  / Home\n',
+    'zaal/Home.zaal': 'i react-toastify/dist/ReactToastify.css\ni { toast } from react-toastify\n'
       + 'C Home\n  button @click=toast("hi") "toast"\n',
   });
   buildIn(root, 'esm');
-  const html = read(root, '.zal-dev/index.html');
+  const html = read(root, '.zaal-dev/index.html');
   assert.match(html, /<link rel="stylesheet" href="https:\/\/esm\.sh\/react-toastify@10\.0\.5\/dist\/ReactToastify\.css" \/>/);
   assert.match(html, /"react-toastify": "https:\/\/esm\.sh\/react-toastify@10\.0\.5\?external=react,react-dom"/);
   assert.doesNotMatch(html.slice(html.indexOf('importmap')), /ReactToastify\.css/,
@@ -151,8 +151,8 @@ test('a package stylesheet is linked from the CDN in the esm preview', () => {
 
 test('a package stylesheet still becomes a dependency for the bundler', () => {
   const root = projectDir({
-    'zal/app.zal': 'A P\n  pkg react-toastify@10.0.5\n  / Home\n',
-    'zal/Home.zal': 'i react-toastify/dist/ReactToastify.css\nC Home\n  p "x"\n',
+    'zaal/app.zaal': 'A P\n  pkg react-toastify@10.0.5\n  / Home\n',
+    'zaal/Home.zaal': 'i react-toastify/dist/ReactToastify.css\nC Home\n  p "x"\n',
   });
   buildIn(root);
   assert.equal(JSON.parse(read(root, 'application/package.json')).dependencies['react-toastify'], '^10.0.5');
@@ -161,8 +161,8 @@ test('a package stylesheet still becomes a dependency for the bundler', () => {
 
 test('a pin for a package nothing imports adds no dependency', () => {
   const root = projectDir({
-    'zal/app.zal': 'A P\n  pkg dayjs@1.11.0\n  / Home\n',
-    'zal/Home.zal': 'C Home\n  p "x"\n',
+    'zaal/app.zaal': 'A P\n  pkg dayjs@1.11.0\n  / Home\n',
+    'zaal/Home.zaal': 'C Home\n  p "x"\n',
   });
   const out = buildIn(root);
   assert.deepEqual(out.deps, []);
@@ -171,24 +171,24 @@ test('a pin for a package nothing imports adds no dependency', () => {
 
 test('two subpaths of one package: two import-map entries, one dependency', () => {
   const root = projectDir({
-    'zal/app.zal': 'A P\n  pkg lodash@4.17.21\n  / Home\n',
-    'zal/Home.zal': 'i debounce lodash/debounce\ni throttle lodash/throttle\n'
+    'zaal/app.zaal': 'A P\n  pkg lodash@4.17.21\n  / Home\n',
+    'zaal/Home.zaal': 'i debounce lodash/debounce\ni throttle lodash/throttle\n'
       + 'C Home\n  p "{debounce}{throttle}"\n',
   });
   const out = buildIn(root);
   assert.deepEqual(out.deps, ['lodash@^4.17.21']);
   assert.equal([...out.pkgs.keys()].length, 2);
   buildIn(root, 'esm');
-  const html = read(root, '.zal-dev/index.html');
+  const html = read(root, '.zaal-dev/index.html');
   assert.match(html, /"lodash\/debounce": "https:\/\/esm\.sh\/lodash@4\.17\.21\/debounce\?external=react,react-dom"/);
   assert.match(html, /"lodash\/throttle": "https:\/\/esm\.sh\/lodash@4\.17\.21\/throttle\?external=react,react-dom"/);
 });
 
 test('one package imported two ways is one dependency', () => {
   const root = projectDir({
-    'zal/app.zal': 'A P\n  pkg framer-motion@11.11.9\n  / Home\n',
-    'zal/Home.zal': 'i { motion } from framer-motion\nC Home\n  motion.div "a"\n',
-    'zal/Other.zal': 'i { AnimatePresence } from framer-motion\nC Other\n  AnimatePresence\n',
+    'zaal/app.zaal': 'A P\n  pkg framer-motion@11.11.9\n  / Home\n',
+    'zaal/Home.zaal': 'i { motion } from framer-motion\nC Home\n  motion.div "a"\n',
+    'zaal/Other.zaal': 'i { AnimatePresence } from framer-motion\nC Other\n  AnimatePresence\n',
   });
   const out = buildIn(root);
   assert.deepEqual(out.deps, ['framer-motion@^11.11.9']);
@@ -197,8 +197,8 @@ test('one package imported two ways is one dependency', () => {
 
 test('a scoped package lands in dependencies under its full name', () => {
   const root = projectDir({
-    'zal/app.zal': 'A P\n  pkg @tanstack/react-query@5.59.0\n  / Home\n',
-    'zal/Home.zal': 'i { useQuery } from @tanstack/react-query\n'
+    'zaal/app.zaal': 'A P\n  pkg @tanstack/react-query@5.59.0\n  / Home\n',
+    'zaal/Home.zaal': 'i { useQuery } from @tanstack/react-query\n'
       + 'C Home\n  use q = useQuery({queryKey:["x"]})\n  p "{q.status}"\n',
   });
   const out = buildIn(root);
@@ -208,8 +208,8 @@ test('a scoped package lands in dependencies under its full name', () => {
 
 test('a version range in a pin is passed through as written', () => {
   const root = projectDir({
-    'zal/app.zal': 'A P\n  pkg dayjs@^1.11.0\n  / Home\n',
-    'zal/Home.zal': 'i dayjs dayjs\nC Home\n  p "{dayjs()}"\n',
+    'zaal/app.zaal': 'A P\n  pkg dayjs@^1.11.0\n  / Home\n',
+    'zaal/Home.zaal': 'i dayjs dayjs\nC Home\n  p "{dayjs()}"\n',
   });
   assert.deepEqual(buildIn(root).deps, ['dayjs@^1.11.0']);
 });
@@ -218,8 +218,8 @@ test('react-dom/client is not a package either', () => {
   const { pkgs } = bare('i { createPortal } from react-dom\nC A\n  p "x"\n');
   assert.equal(pkgs.size, 0);
   const root = projectDir({
-    'zal/app.zal': 'A P\n  / Home\n',
-    'zal/Home.zal': 'i { createPortal } from react-dom\nC Home\n  p "x"\n',
+    'zaal/app.zaal': 'A P\n  / Home\n',
+    'zaal/Home.zaal': 'i { createPortal } from react-dom\nC Home\n  p "x"\n',
   });
   assert.deepEqual(buildIn(root).deps, []);
 });

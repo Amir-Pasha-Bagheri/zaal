@@ -22,14 +22,14 @@ const tree = (root, dir) => {
 };
 
 const NESTED = {
-  'zal/app.zal': 'A Nest\n  ui ./ui.zal\n  / Home\n  /about About\n',
-  'zal/ui.zal': 'D N\nk page main\n  p 0\nk card section\n  p 0\n',
-  'zal/pages/Home.zal': 'i Card ../widgets/ui/Card\nC Home\n  %page\n    Card title="hi"\n',
-  'zal/pages/About.zal': 'C About\n  %page\n    h1 "about"\n',
-  'zal/widgets/ui/Card.zal': 'C Card p:title\n  %card\n    h2 "{title}"\n    {children}\n',
+  'zaal/app.zaal': 'A Nest\n  ui ./ui.zaal\n  / Home\n  /about About\n',
+  'zaal/ui.zaal': 'D N\nk page main\n  p 0\nk card section\n  p 0\n',
+  'zaal/pages/Home.zaal': 'i Card ../widgets/ui/Card\nC Home\n  %page\n    Card title="hi"\n',
+  'zaal/pages/About.zaal': 'C About\n  %page\n    h1 "about"\n',
+  'zaal/widgets/ui/Card.zaal': 'C Card p:title\n  %card\n    h2 "{title}"\n    {children}\n',
 };
 
-test('the output mirrors zal/ at any depth', () => {
+test('the output mirrors zaal/ at any depth', () => {
   const root = projectDir(NESTED);
   buildIn(root);
   assert.deepEqual(tree(root, 'application/src'), [
@@ -53,8 +53,8 @@ test('a renamed source has its stale module and empty directory swept', () => {
   const root = projectDir(NESTED);
   buildIn(root);
   assert.ok(has(root, 'application/src/widgets/ui/Card.jsx'));
-  rmSync(join(root, 'zal/widgets'), { recursive: true });
-  writeFileSync(join(root, 'zal/pages/Home.zal'), 'C Home\n  %page\n    h1 "no card"\n');
+  rmSync(join(root, 'zaal/widgets'), { recursive: true });
+  writeFileSync(join(root, 'zaal/pages/Home.zaal'), 'C Home\n  %page\n    h1 "no card"\n');
   const out = buildIn(root);
   assert.deepEqual(out.stale, ['src/widgets/ui/Card.jsx']);
   assert.ok(!has(root, 'application/src/widgets/ui/Card.jsx'));
@@ -79,7 +79,7 @@ test('assets and node_modules in the output are left alone', () => {
 test('project() reports the blocks it found', () => {
   const root = projectDir({
     ...NESTED,
-    'zal/stores/Todos.zal': 'S Todos s:items=[]\n  cb add(x) = items=[...items,x]\n',
+    'zaal/stores/Todos.zaal': 'S Todos s:items=[]\n  cb add(x) = items=[...items,x]\n',
   });
   const out = buildIn(root);
   assert.deepEqual([...out.stores], [['Todos', 'stores/Todos']]);
@@ -101,14 +101,14 @@ const check = (root, dir) => {
 test('every module the esm backend writes parses as JavaScript', () => {
   const root = projectDir(NESTED);
   buildIn(root, 'esm');
-  check(root, '.zal-dev');
+  check(root, '.zaal-dev');
 });
 
 test('the example project parses as JavaScript, module for module', () => {
   const root = exampleDir();
   const out = buildIn(root, 'esm');
   assert.ok(out.made.length >= 8, `${out.made.length} modules`);
-  const files = check(root, '.zal-dev');
+  const files = check(root, '.zaal-dev');
   for (const f of ['src/components/Counter.js', 'src/components/TodoList.js', 'src/pages/Home.js',
     'src/pages/About.js', 'src/stores/Todos.js', 'src/stores/Theme.js', 'src/main.js',
     'src/router.js']) assert.ok(files.includes(f), f);
@@ -142,27 +142,27 @@ test('the checked-in example/application matches a fresh build', () => {
   for (const f of tree(root, 'application/src')) {
     const mine = read(root, `application/src/${f}`);
     const theirs = readFileSync(join(shipped, 'src', f), 'utf8');
-    assert.equal(mine, theirs, `example/application/src/${f} is out of date — run \`zal build\``);
+    assert.equal(mine, theirs, `example/application/src/${f} is out of date — run \`zaal build\``);
   }
 });
 
 test('a single-file compile is the same module the build writes', async () => {
   const root = exampleDir();
   buildIn(root, 'esm');
-  const { compile, project } = await import('../zal.mjs');
+  const { compile, project } = await import('../zaal.mjs');
   const p = project({ root });
-  const src = read(root, 'zal/components/Counter.zal');
+  const src = read(root, 'zaal/components/Counter.zaal');
   const one = compile(src, 'esm', { ui: p.ui, stores: p.stores, comps: p.comps,
     pins: p.app.pins, cdn: p.app.cdn, main: 'Counter' });
-  assert.equal(one, read(root, '.zal-dev/src/components/Counter.js'));
+  assert.equal(one, read(root, '.zaal-dev/src/components/Counter.js'));
 });
 
 // `i logo ./logo.png` names a file, not a module: the specifier keeps its extension and the
 // file is copied to the mirrored path beside the module that imports it.
 const ASSETS = {
-  'zal/app.zal': 'A Assets\n  / Home\n',
-  'zal/pages/Home.zal': 'i logo ../img/logo.png\nC Home\n  img src=logo\n',
-  'zal/img/logo.png': 'PNG',
+  'zaal/app.zaal': 'A Assets\n  / Home\n',
+  'zaal/pages/Home.zaal': 'i logo ../img/logo.png\nC Home\n  img src=logo\n',
+  'zaal/img/logo.png': 'PNG',
 };
 
 test('a local asset import keeps its path and the file is copied', () => {
@@ -175,13 +175,13 @@ test('a local asset import keeps its path and the file is copied', () => {
 
 test('an asset that is not there is a warning, not a crash', () => {
   const root = projectDir(ASSETS);
-  rmSync(join(root, 'zal/img/logo.png'));
+  rmSync(join(root, 'zaal/img/logo.png'));
   const out = buildIn(root);
-  assert.match(out.warnings.join('\n'), /img\/logo\.png is imported but not in zal\//);
+  assert.match(out.warnings.join('\n'), /img\/logo\.png is imported but not in zaal\//);
 });
 
 test('the esm preview copies assets too', () => {
   const root = projectDir(ASSETS);
   buildIn(root, 'esm');
-  assert.equal(read(root, '.zal-dev/src/img/logo.png'), 'PNG');
+  assert.equal(read(root, '.zaal-dev/src/img/logo.png'), 'PNG');
 });

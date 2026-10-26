@@ -1,7 +1,7 @@
 // The files that are the app rather than a part of it: the entry module that mounts it, the
 // hash router it ships with, and index.html.
 import { basename } from 'node:path';
-import { storeOrder, OUT_SRC, OUT_CSS } from '@zal/core';
+import { storeOrder, OUT_SRC, OUT_CSS } from '@zaal/core';
 import { REACT_V } from './names.mjs';
 
 const router = target => `import { useState, useEffect, createElement } from 'react';

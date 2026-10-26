@@ -13,22 +13,22 @@ import { parseUI, uiCss } from './ui.mjs';
 import { syncDeps } from './deps.mjs';
 import { warn, pkgLine } from './log.mjs';
 
-// app.zal, the design system and every block in zal/ — the context a source file compiles
+// app.zaal, the design system and every block in zaal/ — the context a source file compiles
 // against. Shared, so compiling one file alone means exactly what compiling the app means.
 function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR } = {}) {
   if (!existsSync(join(root, appFile))) {
-    // Point at the layout, rather than leaving an ENOENT to be decoded. An earlier Zal kept
-    // sources in src/ with app.zal at the root, so name the move when either is what is there.
+    // Point at the layout, rather than leaving an ENOENT to be decoded. An earlier Zaal kept
+    // sources in src/ with app.zaal at the root, so name the move when either is what is there.
     const name = basename(appFile);
     const stray = existsSync(join(root, 'src', name)) ? ` — rename src/ to ${srcDir}/`
       : existsSync(join(root, name)) ? ` — move ${name} into ${srcDir}/`
       : existsSync(join(root, 'src')) ? ` — rename src/ to ${srcDir}/ and put ${name} in it`
       : '';
-    throw new Error(`no ${appFile}: a Zal project keeps its sources in ${srcDir}/${stray}`);
+    throw new Error(`no ${appFile}: a Zaal project keeps its sources in ${srcDir}/${stray}`);
   }
   const appSrc = readFileSync(join(root, appFile), 'utf8');
   const app = inFile(appSrc, appFile, () => parseApp(appSrc));
-  // `ui ./ui.zal` and `css ./app.css` are written the way the app file reads them, so they
+  // `ui ./ui.zaal` and `css ./app.css` are written the way the app file reads them, so they
   // resolve against its directory; from here on both are paths from the project root.
   const near = p => /^https?:/.test(p) ? p : posix(join(dirname(appFile), p));
   if (app.ui) app.ui = near(app.ui);
@@ -40,20 +40,20 @@ function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR } = {}) {
   const ui = uiSrc === null ? null : inFile(uiSrc, app.ui, () => parseUI(uiSrc));
   // Read every source first: a store has to be known before the files that consume it compile.
   // Subdirectories come along — the output mirrors the tree, so `i Btn ./ui/Btn` resolves itself.
-  // The app file and the design system live in zal/ too, and are config, not modules.
+  // The app file and the design system live in zaal/ too, and are config, not modules.
   const config = new Set([appFile, app.ui].filter(Boolean).map(posix));
   const sources = new Map(readdirSync(join(root, srcDir), { recursive: true })
-    .map(f => String(f).split(sep).join('/')).filter(f => /\.zal$/.test(f)).sort()
+    .map(f => String(f).split(sep).join('/')).filter(f => /\.zaal$/.test(f)).sort()
     .filter(f => !config.has(posix(join(srcDir, f))))
     .map(f => [f, readFileSync(join(root, srcDir, f), 'utf8')]));
-  // Every block in zal/, so a file referencing a component can be told which `i` line it needs.
+  // Every block in zaal/, so a file referencing a component can be told which `i` line it needs.
   const stores = new Map(), comps = new Map(), clashes = [];
   for (const [f, src] of sources) {
-    const file = f.replace(/\.zal$/, '');
+    const file = f.replace(/\.zaal$/, '');
     for (const [, head, name] of src.matchAll(/^([CS])[ \t]+([A-Za-z][\w$]*)/gm)) {
       // One name, two files: a reference to it would resolve to whichever came last.
       const prev = head === 'S' ? stores.get(name) : comps.get(name)?.file;
-      if (prev && prev !== file) clashes.push(`${head} ${name} is declared in both ${prev}.zal and ${file}.zal`);
+      if (prev && prev !== file) clashes.push(`${head} ${name} is declared in both ${prev}.zaal and ${file}.zaal`);
       if (head === 'S') stores.set(name, file);
       else comps.set(name, { file, named: name !== basename(file) });
     }
@@ -61,12 +61,12 @@ function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR } = {}) {
   return { app, appSrc, ui, sources, stores, comps, clashes };
 }
 
-// Compile a project and write it out. `framework` is the target (`@zal/react`, `@zal/vue`, …);
+// Compile a project and write it out. `framework` is the target (`@zaal/react`, `@zaal/vue`, …);
 // `backend` names one of its code shapes — React's are `jsx` for a bundler and `esm` for the
 // no-install preview. Everything below is the same for all of them.
 function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
     framework, backend = framework?.default } = {}) {
-  if (!framework) throw new Error('build: no target — pass `framework`, e.g. the default export of @zal/react');
+  if (!framework) throw new Error('build: no target — pass `framework`, e.g. the default export of @zaal/react');
   const be = framework.backends[backend];
   if (!be) {
     throw new Error(`unknown backend: ${backend} —`
@@ -78,15 +78,15 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
   inFile(appSrc, appFile, () => { for (const r of app.routes) {
     const c = comps.get(r.component);
     if (!c) fail(r, `route ${r.path}: no \`C ${r.component}\` in ${srcDir}/`);
-    if (c.named) fail(r, `route ${r.path}: \`C ${r.component}\` is in ${srcDir}/${c.file}.zal — a route`
-      + ` component is imported from its own file, so it belongs in a file named ${r.component}.zal`);
+    if (c.named) fail(r, `route ${r.path}: \`C ${r.component}\` is in ${srcDir}/${c.file}.zaal — a route`
+      + ` component is imported from its own file, so it belongs in a file named ${r.component}.zaal`);
   } });
   // Compile the whole app before writing anything: a build that fails leaves the last good
   // output untouched, instead of a directory half-new and half-old that nothing can run.
   const files = new Map();
   for (const [f, src] of sources) {
     const seen = new Set();
-    const path = f.replace(/\.zal$/, '');
+    const path = f.replace(/\.zaal$/, '');
     const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
     const code = inFile(src, join(srcDir, f), () => framework.compile(src, backend,
       { ui, used: seen, pkgs, pins: app.pins, cdn: app.cdn, stores, comps, dir, assets, main: basename(path) }));
@@ -120,7 +120,7 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
     writeFileSync(join(root, outDir, name), code);
   }
   const copied = [];
-  // An `i logo ./logo.png` line names a file in zal/: the output mirrors the tree, so the asset
+  // An `i logo ./logo.png` line names a file in zaal/: the output mirrors the tree, so the asset
   // lands at the same path beside the module that imports it.
   for (const a of assets) {
     const from = join(root, srcDir, a);
@@ -138,7 +138,7 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
     writeFileSync(join(root, outDir, to), readFileSync(from));
     copied.push(to);
   }
-  // A deleted or renamed .zal must not leave a live module behind in the output. Only the
+  // A deleted or renamed .zaal must not leave a live module behind in the output. Only the
   // generated tree is swept: node_modules/, dist/ and anything else in `application/` belongs
   // to the developer, and a rebuild has no business reaching into it.
   const keep = new Set([...files.keys(), ...copied]);
@@ -165,14 +165,14 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
 
-const RELOAD = `<script>new EventSource('/__zal').onmessage = () => location.reload();</script>`;
+const RELOAD = `<script>new EventSource('/__zaal').onmessage = () => location.reload();</script>`;
 
 function serve(dir, port = 5173, { live = false } = {}) {
   const clients = new Set();
   const root = resolve(dir);
   const server = createServer((req, res) => {
     const path = decodeURIComponent(req.url.split('?')[0]);
-    if (path === '/__zal') {
+    if (path === '/__zaal') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
       clients.add(res);
       req.on('close', () => clients.delete(res));
@@ -191,7 +191,7 @@ function serve(dir, port = 5173, { live = false } = {}) {
       if (extname(path)) {
         console.error(`  404  ${path}`);
         res.writeHead(404, { 'content-type': 'text/plain' });
-        res.end(`zal: ${path} is not in ${dir}/ — the last build did not generate it`);
+        res.end(`zaal: ${path} is not in ${dir}/ — the last build did not generate it`);
         return;
       }
       file = join(root, 'index.html');
@@ -209,11 +209,11 @@ function serve(dir, port = 5173, { live = false } = {}) {
   };
 }
 
-// Rebuild on any .zal/.css change, then tell open browsers to reload.
+// Rebuild on any .zaal/.css change, then tell open browsers to reload.
 function watchAndServe({ port = 5173, srcDir = SRC_DIR, framework } = {}) {
   const preview = { framework, backend: framework.preview };
   const first = build(preview);
-  console.log(`\n  Zal  ${first.app.name}  \u2014 ${first.made.length} modules, ${first.app.routes.length} routes`
+  console.log(`\n  Zaal  ${first.app.name}  \u2014 ${first.made.length} modules, ${first.app.routes.length} routes`
     + (first.ui ? `, design system ${first.ui.name}` : '') + pkgLine(first.pkgs));
   warn(first.warnings);
   const { reload } = serve(first.outDir, port, { live: true });
@@ -230,7 +230,7 @@ function watchAndServe({ port = 5173, srcDir = SRC_DIR, framework } = {}) {
       } catch (e) { console.error(`  error: ${e.message}`); }
     }, 60);
   };
-  watch(srcDir, { recursive: true }, (_, f) => f && /\.(zal|css)$/.test(String(f)) && onChange(f));
+  watch(srcDir, { recursive: true }, (_, f) => f && /\.(zaal|css)$/.test(String(f)) && onChange(f));
   for (const f of first.app.css.filter(c => !posix(c).startsWith(srcDir + '/'))) {
     if (existsSync(f)) watch(f, () => onChange(f));
   }

@@ -1,42 +1,65 @@
 # Publishing, and the names
 
+## Where things live
+
+GitHub and npm are separate namespaces, and the name landed differently in each:
+
+- **GitHub:** `github.com/zaal` is taken, so the repo sits under a personal account —
+  `github.com/YOUR-USERNAME/zaal`. Its own `README.md` is the landing page; no organization and
+  no `.github` repo are involved. (`zaal-lang` is free if an org is ever wanted, and a repo can
+  be transferred to one later — GitHub redirects the old URL automatically.)
+- **npm:** the `@zaal` scope is free, so the packages keep the `@scope/name` shape.
+
+Every URL in the manifests and the READMEs says `YOUR-USERNAME` — replace it once the account
+name is settled, or the npm pages will link nowhere.
+
 ## The names
 
-`zal` on npm is **taken** — an unrelated `zal@0.0.0` placeholder — so every package is scoped:
-`@zal/core`, `@zal/react`, `@zal/cli`, and `@zal/vue`, `@zal/next`, `@zal/angular` as they
-arrive. The scope has to be claimed as an npm **organization** before any of this publishes:
-npmjs.com → *Add Organization* → `zal`. Free for public packages.
+The project was renamed from `zal` to `zaal` because `zal` was taken everywhere it mattered: the
+bare npm name (an unrelated `zal@0.0.0` placeholder), the `@zal` npm scope, and `github.com/zal`.
+`zaal` is free on npm, which is what the packages are named after:
 
-A scoped package defaults to private and a publish of one fails on a free account, which is why
-every manifest here carries:
+| | |
+| --- | --- |
+| `@zaal/core` | the language |
+| `@zaal/react` | the React target |
+| `@zaal/cli` | the `zaal` command |
+| `@zaal/next`, `@zaal/vue`, … | as they arrive |
+
+The scope has to be claimed as an npm **organization** before any of this publishes: npmjs.com →
+*Add Organization* → `zaal`. Free for public packages.
+
+A scoped package defaults to private, and publishing a private package fails on a free account.
+That is why every manifest here carries:
 
 ```json
 "publishConfig": { "access": "public" }
 ```
 
-(The CLI's `bin` is still `zal`, so `npx zal build` works regardless of the package name. If the
-`zal` placeholder is still unused later, npm's dispute policy is worth a try — not a blocker.)
+The CLI's `bin` is `zaal` regardless of the package name, so `npx zaal build` works either way.
 
 ## One repo, many packages
 
-Everything publishes from one repo, `zal/framework`. The packages are what carry the names —
-npm spells a scoped package `@zal/react`, so `packages/react/` is published as `@zal/react` and
-read as "zal/react" wherever it is installed. Package names do not have to match repo layout,
-and splitting a target into its own repo later would rename nothing. The reason to keep one repo: a change
-to the parser plus every target that consumes it is one commit, one test run, one CI job. Vite,
-Babel, Vue and Angular are all laid out this way.
+Everything publishes from one repo. The packages are what carry the names — npm spells a scoped
+package `@zaal/react`, so `packages/react/` is published as `@zaal/react` and read as
+"zaal/react" wherever it is installed.
+
+Package names do not have to match repo layout, and splitting a target into its own repo later
+would rename nothing. The reason to keep one repo: a change to the parser plus every target that
+consumes it is one commit, one test run, one CI job. Vite, Babel, Vue and Angular are all laid
+out this way.
 
 ## Publishing
 
-Workspaces publish one at a time, in dependency order — `@zal/react` names `@zal/core@^0.1.0`, so
-core has to exist on the registry first.
+Workspaces publish one at a time, in dependency order — `@zaal/react` names `@zaal/core@^0.1.0`,
+so core has to exist on the registry first.
 
 ```
 npm test
-npm whoami                        # expect to be in the zal org
-npm publish -w @zal/core
-npm publish -w @zal/react
-npm publish -w @zal/cli
+npm whoami                        # expect to be in the zaal org
+npm publish -w @zaal/core
+npm publish -w @zaal/react
+npm publish -w @zaal/cli
 ```
 
 Bumping versions together keeps the dependency ranges honest:
@@ -45,14 +68,14 @@ Bumping versions together keeps the dependency ranges honest:
 npm version patch --workspaces --include-workspace-root
 ```
 
-Before the first publish, two things are still open:
+Before the first publish, one thing is still open:
 
 - **A license.** No package carries a `license` field yet, so npm will warn and the code is
   "all rights reserved" by default. Pick one (MIT is the usual choice for this kind of tool),
-  add a `LICENSE` file, and add `"license": "MIT"` to all three manifests.
-`repository`, `homepage` and `bugs` are already set on all three, each pointing at its own
-directory, so every npm page links back to the right place. They assume the repo is
-`github.com/zal/framework` — if you name it something else, change them.
+  add a `LICENSE` file, and add `"license": "MIT"` to all four manifests.
+
+`repository`, `homepage` and `bugs` are already set on all three packages, each pointing at its
+own directory, so every npm page links back to the right place.
 
 ## Adding a target
 

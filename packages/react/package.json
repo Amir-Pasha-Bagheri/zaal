@@ -1,9 +1,9 @@
 {
-  "name": "@zal/react",
+  "name": "@zaal/react",
   "version": "0.1.0",
-  "description": "The React target for Zal: compiles .zal sources to a standalone React app.",
+  "description": "The React target for Zaal: compiles .zaal sources to a standalone React app.",
   "keywords": [
-    "zal",
+    "zaal",
     "react",
     "dsl",
     "compiler",
@@ -19,7 +19,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@zal/core": "^0.1.0"
+    "@zaal/core": "^0.1.0"
   },
   "publishConfig": {
     "access": "public"
@@ -29,9 +29,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zal/framework.git",
+    "url": "git+https://github.com/YOUR-USERNAME/zaal.git",
     "directory": "packages/react"
   },
-  "homepage": "https://github.com/zal/framework/tree/main/packages/react",
-  "bugs": "https://github.com/zal/framework/issues"
+  "homepage": "https://github.com/YOUR-USERNAME/zaal/tree/main/packages/react",
+  "bugs": "https://github.com/YOUR-USERNAME/zaal/issues"
 }

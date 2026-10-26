@@ -1,7 +1,7 @@
 node_modules/
 out/
-# the example's generated app — rebuilt by `zal build`. In a real Zal project this is the
+# the example's generated app — rebuilt by `zaal build`. In a real Zaal project this is the
 # folder the developer commits; here it is output of the compiler under test.
 example/application/
-# `zal dev`'s zero-install preview
-.zal-dev/
+# `zaal dev`'s zero-install preview
+.zaal-dev/

@@ -1,49 +1,49 @@
-# Zal v0.1 — a token-dense DSL that compiles to React
+# Zaal v0.1 — a token-dense DSL that compiles to React
 
 ```
-npm install                 # links the workspace packages and puts `zal` on the path
-cd example && npx zal dev   # preview + live reload on http://localhost:5173
-npm test                    # the compiler's own suite (no dependencies)
+npm install                # links the workspace packages and puts `zaal` on the path
+cd example && npx zaal dev # preview + live reload on http://localhost:5173
+npm test                   # the compiler's own suite (no dependencies)
 ```
-The compiler has no dependencies. It is `@zal/core` — this document's grammar, the `ui.zal`
+The compiler has no dependencies. It is `@zaal/core` — this document's grammar, the `ui.zaal`
 design system and the build pipeline — plus one target package that generates the code:
-`@zal/react` today. A Zal **project** is two directories — `zal/`, which
-is everything hand-written, and `application/`, which `zal build` writes — and `example/` is one.
+`@zaal/react` today. A Zaal **project** is two directories — `zaal/`, which
+is everything hand-written, and `application/`, which `zaal build` writes — and `example/` is one.
 Every command runs in the project directory.
 
 ```
-zal/                     application/          <- a complete React app; `git init` here
-  app.zal                  package.json
-  ui.zal                   vite.config.js
-  styles/extra.css         .gitignore
-  pages/Home.zal           index.html
-  pages/About.zal          src/
-  components/Panel.zal       main.jsx
-  stores/Todos.zal           router.jsx
-                             pages/Home.jsx
-                             pages/About.jsx
-                             components/Panel.jsx
-                             stores/Todos.jsx
-                             styles/ui.css
-                             styles/extra.css
+zaal/                      application/          <- a complete React app; `git init` here
+  app.zaal                   package.json
+  ui.zaal                    vite.config.js
+  styles/extra.css           .gitignore
+  pages/Home.zaal            index.html
+  pages/About.zaal           src/
+  components/Panel.zaal        main.jsx
+  stores/Todos.zaal            router.jsx
+                               pages/Home.jsx
+                               pages/About.jsx
+                               components/Panel.jsx
+                               stores/Todos.jsx
+                               styles/ui.css
+                               styles/extra.css
 ```
 `application/` is the deliverable, and it is a React project like any other: its own
-`package.json` and `vite.config.js`, an `index.html`, and a `src/` tree mirroring `zal/`
+`package.json` and `vite.config.js`, an `index.html`, and a `src/` tree mirroring `zaal/`
 one-to-one. Nothing in it names the compiler. A developer commits that folder, `npm install`s
 it, runs `npm run dev`, bundles it with `npm run build` and deploys `dist/` — all without
-knowing Zal exists.
+knowing Zaal exists.
 
 Its project files are **written once and then left alone**: a hand-added Vite plugin, dev proxy
 or npm script survives every rebuild. The only standing change a build makes to them is adding a
 package an `i` line named to `dependencies`. Inside `src/` the compiler is the author — a
-renamed or deleted `.zal` has its module swept — and it never touches `node_modules/`, `dist/`
+renamed or deleted `.zaal` has its module swept — and it never touches `node_modules/`, `dist/`
 or anything else you put in the folder.
 
 Indentation = nesting. One node per line. `//` comments ignored — a whole line, or the tail of
 one (`store Theme Todos  // outermost first`); inside a quoted string it is text, not a comment.
 
 ## Top level
-| Zal | React |
+| Zaal | React |
 |---|---|
 | `C Name p:a p:b=1 s:n=0` | `export default function Name({a, b = 1})` + `useState` per `s:` |
 | `C Name memo` | the same, wrapped in `memo(…)` — re-renders only when its props change (`memo=eq` passes a comparator) |
@@ -75,7 +75,7 @@ Capitalized tag = component (`Item todo=t`); a dashed tag is a custom element (`
 A dotted tag is a **member** of something the file imports when the dot can't be a class —
 `motion.div`, `Dialog.Panel` — because a class is lower-case and a component is not, so
 `Card.wide` is still `<Card className="wide">`.
-`%name` = a UI-kit entry from `ui.zal`: `%btn.primary` → `<button className="btn primary">`
+`%name` = a UI-kit entry from `ui.zaal`: `%btn.primary` → `<button className="btn primary">`
 (the tag comes from the kit, so markup never repeats it). An unknown `%name` is a build error;
 a plain `.class` with no kit entry is a build warning.
 
@@ -152,7 +152,7 @@ i Chart,{ Line } from react-chartjs-2 // default + named (no space before the co
 i react-toastify/dist/ReactToastify.css   // side-effect / stylesheet import
 ```
 
-Versions live in one place, `app.zal`, so two files can't disagree:
+Versions live in one place, `app.zaal`, so two files can't disagree:
 ```
 A Demo
   pkg canvas-confetti@1.9.3
@@ -165,12 +165,12 @@ pin wins over it and a mismatch is a warning. Unpinned packages build fine and r
 
 | Backend | How it resolves |
 |---|---|
-| `jsx` | bare specifiers, resolved from `node_modules`; every package is added to `application/package.json` `dependencies` on build, and `zal dev --vite` installs anything missing. |
+| `jsx` | bare specifiers, resolved from `node_modules`; every package is added to `application/package.json` `dependencies` on build, and `zaal dev --vite` installs anything missing. |
 | `esm` (preview) | an import map in `index.html`: `<pkg>@<version>` on the CDN, `?external=react,react-dom` so every package shares the app's one React. **No install.** |
 
 Package stylesheets follow the backend too: the `esm` preview links them from the CDN in `<head>`,
 `jsx` leaves the `import` for the bundler. A **local** stylesheet is not an `i` line — it
-belongs to the app (`css ./styles/extra.css` in `app.zal`).
+belongs to the app (`css ./styles/extra.css` in `app.zaal`).
 
 ## Hooks (child lines of `C`, before the markup)
 | Line | React |
@@ -242,7 +242,7 @@ compiles to `TodosContext`, `<TodosProvider>` and `useTodos()` (also the default
 value is `{ items, setItems, left, add, drop }` — state, a setter per state, and every `memo`,
 `cb`, `ref`, `ctx` and `use` name, memoised on its own dependencies.
 
-`persist` syncs the store's **state** to `localStorage` (key `zal:<name>`, or `persist=my:key`)
+`persist` syncs the store's **state** to `localStorage` (key `zaal:<name>`, or `persist=my:key`)
 and seeds it back on load. Everything derived is recomputed, never stored.
 
 Read a store from any component — a bare store name on a `use` line, imported for you:
@@ -257,8 +257,8 @@ const { items, left, add } = useTodos();
 Store values are read-only in a component: assigning one (`items=[]` in a handler) is a build
 error pointing at the action or `setItems` instead — only the store mutates its own state.
 
-Every `S` block found in `zal/` is wrapped around the app in `main.jsx` automatically, so there
-is no provider to mount by hand. One `store` line in `app.zal` fixes the nesting when it
+Every `S` block found in `zaal/` is wrapped around the app in `main.jsx` automatically, so there
+is no provider to mount by hand. One `store` line in `app.zaal` fixes the nesting when it
 matters (outermost first) — which is what one store reading another needs:
 ```
 A Demo
@@ -292,13 +292,13 @@ C Counter p:label="Count" s:n=0
 
 ---
 
-# App declaration (`zal/app.zal`)
+# App declaration (`zaal/app.zaal`)
 
 ```
 A Demo              // app block
-  t "Zal Demo"      // document title
+  t "Zaal Demo"      // document title
   m #root           // mount node id
-  ui ./ui.zal       // design system -> generated src/styles/ui.css
+  ui ./ui.zaal       // design system -> generated src/styles/ui.css
   css ./styles/extra.css   // optional raw stylesheet(s), copied as-is
   store Theme Todos   // provider nesting order, outermost first (see Global state)
   pkg confetti@1.9.3  // package version pin (see Packages)
@@ -310,12 +310,12 @@ A Demo              // app block
   /* NotFound       // the catch-all: rendered when nothing else matched, whatever the order
 ```
 
-`ui` and `css` paths are relative to `app.zal` itself, so they read the way the source tree does.
+`ui` and `css` paths are relative to `app.zaal` itself, so they read the way the source tree does.
 A directive this list does not name is an error, so a typo (`stores`, `title`) is reported rather
 than ignored; a `ui` path that is not there is a warning and the app builds unstyled.
 
-Every `.zal` under `zal/` compiles to `application/src/<same path>.jsx` — **the tree is
-mirrored**, so `zal/components/Btn.zal` becomes `application/src/components/Btn.jsx` and a local
+Every `.zaal` under `zaal/` compiles to `application/src/<same path>.jsx` — **the tree is
+mirrored**, so `zaal/components/Btn.zaal` becomes `application/src/components/Btn.jsx` and a local
 `i` line is written the way the source reads it (`i Btn ../components/Btn`). Fold the sources
 into whatever directories the app wants — `pages/`, `components/`, `stores/`, any depth — and
 the app follows. A route component may live in a subdirectory; it still has to be the file's own
@@ -326,12 +326,12 @@ default export. A build also generates:
 - `index.html` — title, mount div, stylesheet links and `<script src="./src/main.jsx">`
 - `package.json`, `vite.config.js`, `.gitignore` — once each, if absent
 
-`app.zal` and `ui.zal` are config, not modules: they compile to the app, never to a module of
-their own, and no other `.zal` file imports them.
+`app.zaal` and `ui.zaal` are config, not modules: they compile to the app, never to a module of
+their own, and no other `.zaal` file imports them.
 
 The output directory is the build's own: `.js`/`.jsx`/`.css`/`.html` files it no longer
 generates are removed on every build — at any depth, and an emptied directory goes too — so a
-renamed or deleted `.zal` leaves nothing live behind. Other files (images, fonts) are left alone.
+renamed or deleted `.zaal` leaves nothing live behind. Other files (images, fonts) are left alone.
 A build that fails writes nothing at all, so the last good output stays runnable.
 
 **In scope for free** — no `i` line: `Link`, `go` and `useRoute` from the router, and React's own
@@ -347,14 +347,14 @@ The active link gets `data-active` for styling.
 
 ---
 
-# Design system (`ui.zal`)
+# Design system (`ui.zaal`)
 
 One config file is the whole look of the app: **tokens** (the raw scale) + a **UI kit**
 (one named recipe per class). It compiles to `application/src/styles/ui.css`, which `index.html` links
-first. There is no hand-written CSS in a Zal project; `.zal` files only ever name kit
+first. There is no hand-written CSS in a Zaal project; `.zaal` files only ever name kit
 entries, never properties.
 
-The format is Zal-shaped: indentation nests, one thing per line, `//` comments.
+The format is Zaal-shaped: indentation nests, one thing per line, `//` comments.
 
 | Line | Means |
 |---|---|
@@ -410,7 +410,7 @@ k btn button
 and `:root[data-theme="dark"]`, so the OS setting and an explicit toggle both work (a `scheme
 light` block is the mirror image, excluding `[data-theme=dark]`).
 
-## Extracting a design system into `ui.zal`
+## Extracting a design system into `ui.zaal`
 
 This file is the hand-off point for an agent given a design (screenshots, a Figma, a brand
 page, an existing stylesheet). Fill it in this order — tokens first, because every recipe
@@ -430,7 +430,7 @@ must be expressed in them:
 5. **Check**: every declaration value is either a `$token`, a keyword, or `0`/`1px`-class
    trivia. A raw hex or a stray `13px` in a recipe means a token is missing.
 
-Then write markup against it with `%entry` and run `zal build` — unknown classes are
+Then write markup against it with `%entry` and run `zaal build` — unknown classes are
 reported per file, so a design-system gap shows up as a warning rather than silently
 unstyled markup.
 
@@ -440,21 +440,21 @@ unstyled markup.
 | | |
 |---|---|
 | `jsx` | real JSX in `application/` — the deliverable, bundled by Vite like any React project |
-| `esm` | `createElement` modules in `.zal-dev/` — **no build, no npm install**; React comes from an esm.sh import map |
+| `esm` | `createElement` modules in `.zaal-dev/` — **no build, no npm install**; React comes from an esm.sh import map |
 
 Both write the same shape: `index.html` at the root, modules under its `src/`. `application/` is
-what a build produces and what you commit; `.zal-dev/` is a preview, rewritten freely and safe
-to delete, which is why `zal dev` can run with an empty `node_modules` without disturbing the
+what a build produces and what you commit; `.zaal-dev/` is a preview, rewritten freely and safe
+to delete, which is why `zaal dev` can run with an empty `node_modules` without disturbing the
 folder you have under git.
 
 ## Commands
 | | |
 |---|---|
-| `zal build` | write the React app to `application/` |
-| `zal dev [port]` | preview from `.zal-dev/`, live-reload on every `.zal`/`.css` save — **no install** |
-| `zal dev --vite` | build `application/`, install there and run the real Vite dev server |
-| `zal serve [port]` | serve the preview, no watching |
-| `zal zal/pages/X.zal out` | compile a single file |
+| `zaal build` | write the React app to `application/` |
+| `zaal dev [port]` | preview from `.zaal-dev/`, live-reload on every `.zaal`/`.css` save — **no install** |
+| `zaal dev --vite` | build `application/`, install there and run the real Vite dev server |
+| `zaal serve [port]` | serve the preview, no watching |
+| `zaal zaal/pages/X.zaal out` | compile a single file |
 
-To ship: `zal build`, then `cd application && npm install && npm run build` — `dist/` is the
+To ship: `zaal build`, then `cd application && npm install && npm run build` — `dist/` is the
 static site. Every package an `i` line names is already in `dependencies`.

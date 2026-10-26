@@ -1,7 +1,7 @@
 // What names a module has, and whether every component it references is one of them. Without
 // this the compiler happily emits a call to a component with no import to match, and the
 // mistake only surfaces as a ReferenceError in the browser.
-import { fail, nearest, rel, RAW_BODY, SRC_DIR } from '@zal/core';
+import { fail, nearest, rel, RAW_BODY, SRC_DIR } from '@zaal/core';
 import { ROUTER_EXPORTS, REACT_COMPS } from './names.mjs';
 
 // Resolve `%name` tags against the kit and record every class the file uses.
@@ -50,7 +50,7 @@ function jsNames(node, out = new Set(), inJs = false) {
   return out;
 }
 
-// The `i` line that would bring a component declared in zal/ into scope. One block per file is
+// The `i` line that would bring a component declared in zaal/ into scope. One block per file is
 // the default export, so anything else in that file is a named one.
 const importHint = (name, c, dir) => c.named
   ? `i { ${name} } from ${rel(dir, c.file)}` : `i ${name} ${rel(dir, c.file)}`;

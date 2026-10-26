@@ -1,23 +1,23 @@
-# @zal/cli
+# @zaal/cli
 
-The `zal` command: compile `.zal` sources into a React app, preview it, rebuild on change.
-
-```
-npm install -D @zal/cli
-```
+The `zaal` command: compile `.zaal` sources into a React app, preview it, rebuild on change.
 
 ```
-zal build           write the React app to application/
-zal dev [port]      preview and live-reload on change          (no install needed)
-zal dev --vite      build application/ and run it through Vite (installs there)
-zal serve [port]    serve the preview without watching
-zal <file.zal>      compile a single file
+npm install -D @zaal/cli
 ```
 
-Sources live in `zal/` — `app.zal` and `ui.zal` included. `zal build` writes `application/`: a
+```
+zaal build           write the React app to application/
+zaal dev [port]      preview and live-reload on change          (no install needed)
+zaal dev --vite      build application/ and run it through Vite (installs there)
+zaal serve [port]    serve the preview without watching
+zaal <file.zaal>     compile a single file
+```
+
+Sources live in `zaal/` — `app.zaal` and `ui.zaal` included. `zaal build` writes `application/`: a
 standalone React app with its own `package.json`, `vite.config.js`, `index.html` and `src/` tree,
-which is the folder to commit, install and deploy. `zal dev` previews it without installing
-anything, from `.zal-dev/`, and leaves `application/` untouched.
+which is the folder to commit, install and deploy. `zaal dev` previews it without installing
+anything, from `.zaal-dev/`, and leaves `application/` untouched.
 
-The language is **[SPEC.md](https://github.com/zal/framework/blob/main/SPEC.md)**. The compiler is [`@zal/core`](https://github.com/zal/framework/tree/main/packages/core) plus a
-target — [`@zal/react`](https://github.com/zal/framework/tree/main/packages/react) today.
+The language is **[SPEC.md](https://github.com/YOUR-USERNAME/zaal/blob/main/SPEC.md)**. The compiler is [`@zaal/core`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/core) plus a
+target — [`@zaal/react`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/react) today.

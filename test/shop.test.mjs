@@ -12,10 +12,10 @@ after(cleanup);
 beforeEach(() => { globalThis.__pkgCalls = []; });
 
 const SHOP = {
-  'zal/app.zal': `A Shop
-  t "Zal Shop"
+  'zaal/app.zaal': `A Shop
+  t "Zaal Shop"
   m #shop
-  ui ./ui.zal
+  ui ./ui.zaal
   css ./styles/print.css
   pkg canvas-confetti@1.9.3
   store Cart
@@ -24,7 +24,7 @@ const SHOP = {
   /basket Basket
   /stats Stats lazy
 `,
-  'zal/ui.zal': `D Shop
+  'zaal/ui.zaal': `D Shop
 t color
   bg #fff
   fg #111
@@ -72,14 +72,14 @@ k row div
 k tag span
   fg $color.accent
 `,
-  'zal/styles/print.css': '@media print { .btn { display: none } }\n',
+  'zaal/styles/print.css': '@media print { .btn { display: none } }\n',
 
   // a plain module of helpers, shared by components
-  'zal/lib/money.zal': `js export const price = cents => "$" + (cents / 100).toFixed(2)
+  'zaal/lib/money.zaal': `js export const price = cents => "$" + (cents / 100).toFixed(2)
 js export const sum = items => items.reduce((n, i) => n + i.cents * i.qty, 0)
 `,
 
-  'zal/stores/Cart.zal': `S Cart persist=shop:cart.v1 s:lines=[]
+  'zaal/stores/Cart.zaal': `S Cart persist=shop:cart.v1 s:lines=[]
   memo count = lines.reduce((n, l) => n + l.qty, 0)
   memo cents = lines.reduce((n, l) => n + l.cents * l.qty, 0)
   cb add(item) = lines=lines.some(l => l.id === item.id) ? lines.map(l => l.id === item.id ? { ...l, qty: l.qty + 1 } : l) : [...lines, { ...item, qty: 1 }]
@@ -87,11 +87,11 @@ js export const sum = items => items.reduce((n, i) => n + i.cents * i.qty, 0)
   cb clear() = lines=[]
 `,
 
-  'zal/components/Price.zal': `i { price } from ../lib/money
+  'zaal/components/Price.zaal': `i { price } from ../lib/money
 C Price memo p:cents p:label="price"
   %tag title="{label}: {cents} cents" "{price(cents)}"
 `,
-  'zal/components/Tile.zal': `i Price ./Price
+  'zaal/components/Tile.zaal': `i Price ./Price
 C Tile p:item p:onAdd
   %card data-id=item.id aria-label="{item.name}"
     h3 "{item.name}"
@@ -103,7 +103,7 @@ C Tile p:item p:onAdd
     :
       %btn.buy @click=onAdd(item) "add"
 `,
-  'zal/components/Shell.zal': `C Shell p:title p:nav=null p:aside=null
+  'zaal/components/Shell.zaal': `C Shell p:title p:nav=null p:aside=null
   %page
     header
       h1 "{title}"
@@ -116,13 +116,13 @@ C Tile p:item p:onAdd
         aside
           {aside}
 `,
-  'zal/components/Guard.zal': `C Guard catch p:where="the page"
+  'zaal/components/Guard.zaal': `C Guard catch p:where="the page"
   %card
     h3 "{where} failed"
     p "{error.message}"
     button @click=reset "retry"
 `,
-  'zal/components/Form.zal': `i { createContext } from react
+  'zaal/components/Form.zaal': `i { createContext } from react
 C Form p:onSubmit s:email="" s:errors=[]
   cb check(e) = e.preventDefault(); errors=email.includes("@") ? [] : ["bad email"]; onSubmit(email.includes("@") ? email : null)
   form @submit=check
@@ -133,7 +133,7 @@ C Form p:onSubmit s:email="" s:errors=[]
       %err "{msg}"
     %btn type="submit" "sign up"
 `,
-  'zal/pages/Catalog.zal': `i Tile ../components/Tile
+  'zaal/pages/Catalog.zaal': `i Tile ../components/Tile
 i Shell ../components/Shell
 i Guard ../components/Guard
 i Form ../components/Form
@@ -161,7 +161,7 @@ C Catalog s:query="" s:signed=null
         Guard where="{item.name}"
           Tile item=item onAdd=buy
 `,
-  'zal/pages/Product.zal': `i Price ../components/Price
+  'zaal/pages/Product.zaal': `i Price ../components/Price
 i Shell ../components/Shell
 C Product p:id
   use { add } = Cart
@@ -173,7 +173,7 @@ C Product p:id
     Price cents=1000 label="each"
     %btn @click=add({id:id,name:id,cents:1000}) "add {id}"
 `,
-  'zal/pages/Basket.zal': `i { price, sum } from ../lib/money
+  'zaal/pages/Basket.zaal': `i { price, sum } from ../lib/money
 i Shell ../components/Shell
 C Basket
   use { lines, cents, drop, clear } = Cart
@@ -193,7 +193,7 @@ C Basket
     :
       p "nothing in the basket"
 `,
-  'zal/pages/Stats.zal': `C Stats
+  'zaal/pages/Stats.zaal': `C Stats
   use { count, cents } = Cart
   p "{count} items worth {cents}"
 `,
@@ -207,7 +207,7 @@ test('the shop compiles for both backends, with no warnings', () => {
   assert.deepEqual(jsx.deps, ['canvas-confetti@^1.9.3']);
   const esm = buildIn(root, 'esm');
   for (const f of esm.made) {
-    execFileSync(process.execPath, ['--check', join(root, '.zal-dev', f.replace(/\.jsx$/, '.js'))], { stdio: 'pipe' });
+    execFileSync(process.execPath, ['--check', join(root, '.zaal-dev', f.replace(/\.jsx$/, '.js'))], { stdio: 'pipe' });
   }
 });
 
@@ -317,7 +317,7 @@ test('a :param page runs its effect once per id and cleans up', async () => {
 test('a boundary inside a map catches one item without losing the others', async () => {
   const broken = {
     ...SHOP,
-    'zal/components/Tile.zal': `i Price ./Price
+    'zaal/components/Tile.zaal': `i Price ./Price
 C Tile p:item p:onAdd
   js if (item.stock === 0) { throw new Error("no stock for " + item.name) }
   %card
@@ -341,10 +341,10 @@ test('the shop rebuilds byte-for-byte and sweeps a removed page', async () => {
   buildIn(root);
   assert.equal(read(root, 'application/src/pages/Catalog.jsx'), before);
   const { rmSync, writeFileSync } = await import('node:fs');
-  rmSync(join(root, 'zal/pages/Stats.zal'));
-  writeFileSync(join(root, 'zal/app.zal'), SHOP['zal/app.zal'].replace('  /stats Stats lazy\n', ''));
-  writeFileSync(join(root, 'zal/pages/Catalog.zal'),
-    SHOP['zal/pages/Catalog.zal'].replace('      Link to="/stats" "stats"\n', ''));
+  rmSync(join(root, 'zaal/pages/Stats.zaal'));
+  writeFileSync(join(root, 'zaal/app.zaal'), SHOP['zaal/app.zaal'].replace('  /stats Stats lazy\n', ''));
+  writeFileSync(join(root, 'zaal/pages/Catalog.zaal'),
+    SHOP['zaal/pages/Catalog.zaal'].replace('      Link to="/stats" "stats"\n', ''));
   const out = buildIn(root);
   assert.deepEqual(out.stale, ['src/pages/Stats.jsx']);
   assert.doesNotMatch(read(root, 'application/src/main.jsx'), /Stats|lazy|Suspense/);

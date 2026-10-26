@@ -1,9 +1,9 @@
-if (typeof HTMLElement !== "undefined" && !customElements.get("zal-badge")) {
-customElements.define("zal-badge", class extends HTMLElement { connectedCallback() { this.textContent = this.getAttribute("text") ?? ""; }
+if (typeof HTMLElement !== "undefined" && !customElements.get("zaal-badge")) {
+customElements.define("zaal-badge", class extends HTMLElement { connectedCallback() { this.textContent = this.getAttribute("text") ?? ""; }
 });
 }
 export default function Badge({ text }) {
   return (
-    <zal-badge className="badge" text={text} />
+    <zaal-badge className="badge" text={text} />
   );
 }

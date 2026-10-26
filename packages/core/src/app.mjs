@@ -1,4 +1,4 @@
-// app.zal: the routes, the title, the design system, the package pins. An app declaration
+// app.zaal: the routes, the title, the design system, the package pins. An app declaration
 // says what the app *is*, not what it compiles to, so none of this is target-specific.
 import { parse } from './parse.mjs';
 import { fail } from './diagnostics.mjs';
@@ -26,7 +26,7 @@ function parseApp(src) {
   return app;
 }
 
-// Providers listed in app.zal (`store A B`) wrap outermost-first, the rest follow by name.
+// Providers listed in app.zaal (`store A B`) wrap outermost-first, the rest follow by name.
 function storeOrder(app, stores) {
   const named = app.storeOrder.filter(n => stores.has(n));
   for (const n of app.storeOrder) if (!stores.has(n)) fail(app.ln, `store ${n}: no \`S ${n}\` in ${SRC_DIR}/`);

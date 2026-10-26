@@ -13,7 +13,7 @@ beforeEach(() => { globalThis.__pkgCalls = []; });
 test('the example app renders its home page', async () => {
   const { app, env } = await runProject(exampleDir());
   assert.match(app.html, /<main class="page">/);
-  assert.match(app.html, /Built with Zal — 0 open/);
+  assert.match(app.html, /Built with Zaal — 0 open/);
   assert.match(app.html, /<h2>Clicks: 0<\/h2>/, 'the Counter got its label prop');
   assert.match(app.html, /<h2>Todo \(0\)<\/h2>/, 'the TodoList reads the Todos store');
   assert.match(app.html, /class="hint">nothing yet<\/p>/);
@@ -50,7 +50,7 @@ test('TodoList: input, submit, the store action and the mapped list', async () =
   app.fire(app.find(n => n.tag === 'form'), 'onSubmit');
   assert.match(app.html, /<li class="item"><span>buy milk<\/span>/);
   assert.match(app.html, /<h2>Todo \(1\)<\/h2>/, 'the store memo recomputed');
-  assert.match(app.html, /Built with Zal — 1 open/, 'the page reads the same store');
+  assert.match(app.html, /Built with Zaal — 1 open/, 'the page reads the same store');
   assert.equal(app.find(n => n.tag === 'input').props.value, '', 'the draft was cleared');
   assert.doesNotMatch(app.html, /nothing yet/);
 });
@@ -85,17 +85,17 @@ test('the Todos store persists to localStorage and seeds back from it', async ()
   const first = await runProject(exampleDir());
   first.app.fire(first.app.find(n => n.tag === 'input'), 'onInput', { target: { value: 'keep me' } });
   first.app.fire(first.app.find(n => n.tag === 'form'), 'onSubmit');
-  assert.deepEqual(first.env.saved('zal:todos').items.map(t => t.text), ['keep me']);
+  assert.deepEqual(first.env.saved('zaal:todos').items.map(t => t.text), ['keep me']);
 
   // A fresh load of the app, with that storage already in place: the store reads localStorage
   // when its module is evaluated, so the seed has to be there before the import.
   const root = exampleDir();
   buildIn(root, 'esm');
   const env = installEnv({ hash: '#/' });
-  env.seed('zal:todos', { items: [{ id: 1, text: 'from storage' }] });
+  env.seed('zaal:todos', { items: [{ id: 1, text: 'from storage' }] });
   const { mount, createElement } = await import('./helpers/tiny-react.mjs');
-  const store = await import(`${root}/.zal-dev/src/stores/Todos.js`);
-  const list = await import(`${root}/.zal-dev/src/components/TodoList.js`);
+  const store = await import(`${root}/.zaal-dev/src/stores/Todos.js`);
+  const list = await import(`${root}/.zaal-dev/src/components/TodoList.js`);
   const app = mount(createElement(store.TodosProvider, null, createElement(list.default, null)));
   assert.match(app.html, /<span>from storage<\/span>/);
   assert.match(app.html, /Todo \(1\)/);
@@ -107,7 +107,7 @@ test('the Theme store toggles, writes the data attribute and persists', async ()
   assert.match(app.html, /☾/, 'the interpolated ternary in the button label');
   app.fire('☾');
   assert.equal(env.document.documentElement.dataset.theme, 'dark');
-  assert.equal(env.saved('zal:theme').mode, 'dark');
+  assert.equal(env.saved('zaal:theme').mode, 'dark');
   assert.match(app.html, /☀/);
   app.fire('☀');
   assert.equal(env.document.documentElement.dataset.theme, 'light');
@@ -115,11 +115,11 @@ test('the Theme store toggles, writes the data attribute and persists', async ()
 
 test('the router renders the route for the hash, and navigation swaps pages', async () => {
   const { app, env } = await runProject(exampleDir(), { hash: '#/about' });
-  assert.match(app.html, /Components live in \.zal files/);
+  assert.match(app.html, /Components live in \.zaal files/);
   assert.match(app.html, /<a href="#\/about" data-active="true">About<\/a>/);
-  assert.doesNotMatch(app.html, /Built with Zal/);
+  assert.doesNotMatch(app.html, /Built with Zaal/);
   env.navigate('/');
-  assert.match(app.html, /Built with Zal/);
+  assert.match(app.html, /Built with Zaal/);
   assert.doesNotMatch(app.html, /Components live in/);
   env.navigate('/nope');
   assert.match(app.html, /<h1>404<\/h1>/, 'the `/* NotFound` catch-all rendered');
@@ -140,12 +140,12 @@ const UI = 'D T\nk page main\n  p 0\nk card section\n  p 0\n';
 
 test('an error boundary catches a child render error and reset recovers', async () => {
   const root = projectDir({
-    'zal/app.zal': 'A Guard\n  ui ./ui.zal\n  / Home\n',
-    'zal/ui.zal': UI,
-    'zal/Boom.zal': 'C Boom p:bad\n  js if (bad) { throw new Error("kaboom") }\n  p "fine"\n',
-    'zal/Oops.zal': 'C Oops catch p:title="Something broke"\n  %card\n    h2 "{title}"\n'
+    'zaal/app.zaal': 'A Guard\n  ui ./ui.zaal\n  / Home\n',
+    'zaal/ui.zaal': UI,
+    'zaal/Boom.zaal': 'C Boom p:bad\n  js if (bad) { throw new Error("kaboom") }\n  p "fine"\n',
+    'zaal/Oops.zaal': 'C Oops catch p:title="Something broke"\n  %card\n    h2 "{title}"\n'
       + '    p "{error.message}"\n    button @click=reset "try again"\n',
-    'zal/Home.zal': 'i Oops ./Oops\ni Boom ./Boom\nC Home s:bad=true\n  %page\n'
+    'zaal/Home.zaal': 'i Oops ./Oops\ni Boom ./Boom\nC Home s:bad=true\n  %page\n'
       + '    button @click=bad=false "fix"\n    Oops\n      Boom bad=bad\n',
   });
   const { app } = await runProject(root);
@@ -159,12 +159,12 @@ test('an error boundary catches a child render error and reset recovers', async 
 
 test('a memo component, a lazy route and a rest-prop component all run', async () => {
   const root = projectDir({
-    'zal/app.zal': 'A Mix\n  ui ./ui.zal\n  / Home\n  /heavy Heavy lazy\n',
-    'zal/ui.zal': UI,
-    'zal/Row.zal': 'C Row memo p:label\n  li "{label}"\n',
-    'zal/Field.zal': 'C Field p:label\n  label\n    "{label}"\n    input ...rest\n',
-    'zal/Heavy.zal': 'C Heavy\n  %page\n    h1 "heavy"\n',
-    'zal/Home.zal': 'i Row ./Row\ni Field ./Field\nC Home s:rows=["a","b"]\n  %page\n'
+    'zaal/app.zaal': 'A Mix\n  ui ./ui.zaal\n  / Home\n  /heavy Heavy lazy\n',
+    'zaal/ui.zaal': UI,
+    'zaal/Row.zaal': 'C Row memo p:label\n  li "{label}"\n',
+    'zaal/Field.zaal': 'C Field p:label\n  label\n    "{label}"\n    input ...rest\n',
+    'zaal/Heavy.zaal': 'C Heavy\n  %page\n    h1 "heavy"\n',
+    'zaal/Home.zaal': 'i Row ./Row\ni Field ./Field\nC Home s:rows=["a","b"]\n  %page\n'
       + '    ul\n      *rows as r k=r\n        Row label=r\n'
       + '    Field label="Name" placeholder="type" required\n',
   });
@@ -176,12 +176,12 @@ test('a memo component, a lazy route and a rest-prop component all run', async (
   assert.doesNotMatch(app.html, /heavy/, 'the lazy route is not rendered until visited');
 });
 
-test('a store reading another store, in the order app.zal pins', async () => {
+test('a store reading another store, in the order app.zaal pins', async () => {
   const root = projectDir({
-    'zal/app.zal': 'A Chain\n  store Theme Prefs\n  / Home\n',
-    'zal/stores/Theme.zal': 'S Theme s:mode="light"\n  cb toggle() = mode = mode == "dark" ? "light" : "dark"\n',
-    'zal/stores/Prefs.zal': 'S Prefs s:size=1\n  use { mode } = Theme\n  memo summary = "{mode}@{size}"\n',
-    'zal/Home.zal': 'C Home\n  use { summary } = Prefs\n  use { toggle } = Theme\n'
+    'zaal/app.zaal': 'A Chain\n  store Theme Prefs\n  / Home\n',
+    'zaal/stores/Theme.zaal': 'S Theme s:mode="light"\n  cb toggle() = mode = mode == "dark" ? "light" : "dark"\n',
+    'zaal/stores/Prefs.zaal': 'S Prefs s:size=1\n  use { mode } = Theme\n  memo summary = "{mode}@{size}"\n',
+    'zaal/Home.zaal': 'C Home\n  use { summary } = Prefs\n  use { toggle } = Theme\n'
       + '  p "{summary}"\n  button @click=toggle "flip"\n',
   });
   const { app } = await runProject(root);
@@ -192,8 +192,8 @@ test('a store reading another store, in the order app.zal pins', async () => {
 
 test('an fx cleanup runs, and a ref survives re-renders', async () => {
   const root = projectDir({
-    'zal/app.zal': 'A Fx\n  / Home\n',
-    'zal/Home.zal': `C Home s:n=0
+    'zaal/app.zaal': 'A Fx\n  / Home\n',
+    'zaal/Home.zaal': `C Home s:n=0
   ref seen
   fx!
     window.__mounted = (window.__mounted || 0) + 1
@@ -237,7 +237,7 @@ test('Dex: a failed request falls back to the bundled data and says so', async (
     { hash: '#/dex', fetch: () => Promise.reject(new Error('offline')) });
   await tick();
   assert.match(app.html, /<span>bulbasaur<\/span>/, 'the data module seeded the list');
-  assert.match(app.html, /<zal-badge class="badge" text="offline — showing bundled data"/,
+  assert.match(app.html, /<zaal-badge class="badge" text="offline — showing bundled data"/,
     'the custom element rendered as written');
 });
 
@@ -247,7 +247,7 @@ test('Caught: a star writes through the store and every screen sees it', async (
   const star = app.all(n => n.tag === 'button' && n.props.title === 'catch');
   assert.equal(star.length, 3);
   app.fire(star[0], 'onClick');
-  assert.deepEqual(env.saved('zal:caught').ids, ['pikachu'], 'the store persisted');
+  assert.deepEqual(env.saved('zaal:caught').ids, ['pikachu'], 'the store persisted');
   assert.match(app.html, /1 caught/, 'the nav pill reads the same store');
   env.navigate('/stats');
   await tick();                                    // the lazy route's import resolves
@@ -285,7 +285,7 @@ test('Pokemon: the boundary catches a thrown render and reset recovers', async (
 test('the nav is one component on every page, with the asset and the theme toggle', async () => {
   const { app, env } = await runProject(exampleDir(), { hash: '#/stats' });
   await tick();
-  assert.match(app.html, /<img class="mark" src="[^"]*img\/logo\.png" alt="Zal"/, 'the asset URL');
+  assert.match(app.html, /<img class="mark" src="[^"]*img\/logo\.png" alt="Zaal"/, 'the asset URL');
   app.fire(app.find(n => n.props.title === 'theme'), 'onClick');
   assert.equal(env.document.documentElement.dataset.theme, 'dark');
   env.navigate('/nope');

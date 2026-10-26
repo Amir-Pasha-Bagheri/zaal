@@ -1,14 +1,14 @@
-// ui.zal -> tokens, schemes, base elements, the kit and its variants.
+// ui.zaal -> tokens, schemes, base elements, the kit and its variants.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseUI, uiCss } from '../zal.mjs';
+import { parseUI, uiCss } from '../zaal.mjs';
 
 const css = src => uiCss(parseUI(src));
 
 test('token groups become custom properties on :root', () => {
-  const out = css('D Zal\nt color\n  accent #3b5bfd\n  on-accent #fff\nt space\n  1 .25rem\n');
+  const out = css('D Zaal\nt color\n  accent #3b5bfd\n  on-accent #fff\nt space\n  1 .25rem\n');
   assert.match(out, /:root \{\n\s*color-scheme: light dark;\n\s*--color-accent: #3b5bfd;\n\s*--color-on-accent: #fff;\n\s*--space-1: \.25rem;\n\}/);
-  assert.match(out, /^\/\* Zal — tokens/);
+  assert.match(out, /^\/\* Zaal — tokens/);
 });
 
 test('$group.name becomes var(--group-name), in tokens too', () => {
@@ -97,10 +97,10 @@ test('a recipe with no declarations emits no empty rule', () => {
 
 test('the real example design system compiles', async () => {
   const { readFileSync } = await import('node:fs');
-  const src = readFileSync(new URL('../example/zal/ui.zal', import.meta.url), 'utf8');
+  const src = readFileSync(new URL('../example/zaal/ui.zaal', import.meta.url), 'utf8');
   const ui = parseUI(src);
   const out = uiCss(ui);
-  assert.equal(ui.name, 'Zal');
+  assert.equal(ui.name, 'Zaal');
   for (const k of ['page', 'nav', 'card', 'row', 'btn', 'list', 'item', 'hint', 'counter']) {
     assert.ok(ui.kit[k], `kit entry ${k}`);
     assert.match(out, new RegExp(`\\.${k} \\{`));

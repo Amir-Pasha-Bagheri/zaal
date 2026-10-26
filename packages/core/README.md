@@ -1,11 +1,11 @@
-# @zal/core
+# @zaal/core
 
-The Zal language, with no framework of its own: the lexer, the parser, the `ui.zal` design
+The Zaal language, with no framework of its own: the lexer, the parser, the `ui.zaal` design
 system, and the pipeline that reads a project, compiles every source against it and writes the
-output. See **[SPEC.md](https://github.com/zal/framework/blob/main/SPEC.md)** for the language itself.
+output. See **[SPEC.md](https://github.com/YOUR-USERNAME/zaal/blob/main/SPEC.md)** for the language itself.
 
-This package generates no code. That is a target's job — [`@zal/react`](https://github.com/zal/framework/tree/main/packages/react) is the first
-one. If you are building an app, install a target (or [`@zal/cli`](https://github.com/zal/framework/tree/main/packages/cli)); install `@zal/core`
+This package generates no code. That is a target's job — [`@zaal/react`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/react) is the first
+one. If you are building an app, install a target (or [`@zaal/cli`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/cli)); install `@zaal/core`
 directly only to write a target of your own, or to use the parser on its own.
 
 ## A target
@@ -14,8 +14,8 @@ A target is an object. `build` asks it which backends it has and how to write ea
 never names a framework itself:
 
 ```js
-import { build } from '@zal/core';
-import react from '@zal/react';
+import { build } from '@zaal/core';
+import react from '@zaal/react';
 
 build({ framework: react, backend: 'jsx' });
 ```
@@ -23,13 +23,13 @@ build({ framework: react, backend: 'jsx' });
 ```js
 const target = {
   name: 'react',
-  default: 'jsx',          // the backend `zal build` writes
-  preview: 'esm',          // the backend `zal dev` serves
+  default: 'jsx',          // the backend `zaal build` writes
+  preview: 'esm',          // the backend `zaal dev` serves
   backends: {
     jsx: { ext: '.jsx', outDir: 'application', scaffold: true },
-    esm: { ext: '.js', outDir: '.zal-dev', scaffold: false },
+    esm: { ext: '.js', outDir: '.zaal-dev', scaffold: false },
   },
-  compile(src, backend, opts),              // one .zal source -> one module
+  compile(src, backend, opts),              // one .zaal source -> one module
   mainFile(app, backend, stores, comps),    // the entry that mounts the app
   html(app, backend, pkgs),                 // index.html
   scaffold(dir, app),                       // project files the deliverable needs
@@ -37,9 +37,9 @@ const target = {
 };
 ```
 
-What core gives a target to work with: `parse` (a `.zal` source to a tree), `attrParts` (a markup
+What core gives a target to work with: `parse` (a `.zaal` source to a tree), `attrParts` (a markup
 line's attributes), `stmts`/`interp`/`handler` (the JavaScript parts of a line), `parseUI` and
-`uiCss` (the design system, as plain CSS), `parseApp` (app.zal), `pkgRef` (npm specifiers),
+`uiCss` (the design system, as plain CSS), `parseApp` (app.zaal), `pkgRef` (npm specifiers),
 `nearest` ("did you mean"), and `fail` (an error that names the line it came from).
 
 `EV` and `ALIAS` are the one target-flavoured piece in core: they map `@click` to `onClick` and

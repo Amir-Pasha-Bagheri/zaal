@@ -1,7 +1,7 @@
 A Demo
-  t "Zal Demo"
+  t "Zaal Demo"
   m #root
-  ui ./ui.zal
+  ui ./ui.zaal
   css ./styles/extra.css
   pkg canvas-confetti@1.9.3
   pkg framer-motion@11.11.9

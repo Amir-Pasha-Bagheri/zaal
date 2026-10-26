@@ -1,5 +1,5 @@
 // `S Name` -> a context, a provider and a use<Name>() hook.
-import { fail, IDENT, setter } from '@zal/core';
+import { fail, IDENT, setter } from '@zaal/core';
 import { hookCode, lineText } from './component.mjs';
 import { EL } from './markup.mjs';
 
@@ -8,7 +8,7 @@ import { EL } from './markup.mjs';
 function store(node, target, opts = {}) {
   const codes = node.kids.map(lineText).join(' ');
   const persist = node.parts.find(p => p === 'persist' || p.startsWith('persist='));
-  const key = persist?.includes('=') ? persist.slice(8) : `zal:${node.name.toLowerCase()}`;
+  const key = persist?.includes('=') ? persist.slice(8) : `zaal:${node.name.toLowerCase()}`;
   const ctx = { props: [], state: [], globals: new Set(), needs: new Set(), stores: opts.stores || new Map() };
   for (const p of node.parts) {
     if (!p.startsWith('s:')) {

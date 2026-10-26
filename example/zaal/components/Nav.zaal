@@ -4,7 +4,7 @@ C Nav
   use { mode, toggle } = Theme
   use { total } = Caught
   %nav
-    img.mark src=logo alt="Zal" width=22 height=22
+    img.mark src=logo alt="Zaal" width=22 height=22
     Link to="/" "Home"
     Link to="/dex" "Pokédex"
     Link to="/stats" "Stats"
