@@ -115,6 +115,18 @@ Three more harness gaps closed so the suite can test what a real app does: unmou
 runs (a timer in an `fx` held the event loop open), resolving lazy imports, and the missing
 hooks (`useDebugValue`, `useImperativeHandle`, …).
 
+## Part 1f — round five, and the rate
+
+Sixteen new tests in areas nothing had touched — persistence across a schema change, scoped
+and subpath package specifiers, the single-file command, `scheme light`, raw-CSS ordering,
+sweeping a dropped stylesheet, module shape, keys in the esm backend — found **zero** bugs.
+That is the first round with none, after 8 → 4 → 19 → 12.
+
+The one bug this round came from testing the *deliverable* rather than the compiler: Vite's
+default `base` wrote absolute `/assets/…` URLs into `dist/index.html`, so a built app only
+worked when served from a domain root — not from a project page, a subdirectory, or disk. The
+generated `vite.config.js` now sets `base: './'`.
+
 ## Part 2 — features (React surface Zaal cannot say)
 
 - [ ] **F1. Custom hook blocks.** No `H useThing` — a shared hook is hand-written JS today.
@@ -151,12 +163,46 @@ it to itself. Three holes, two now closed:
 - [x] **Nothing held React's DOM contract.** The test React rendered anything; real React
   throws on a string `style` and warns-then-drops for `class`, `tabindex` or `onKeyup`. The
   harness now refuses all of those, so the next such regression fails a test.
-- [ ] **No real parser, no real React.** Both of the above are approximations written here
-  because the sandbox has no network. One dev dependency (`esbuild` or `@babel/parser`) would
-  parse the jsx output properly, and `react-dom/server` with `console.error` treated as a
-  failure would make React itself the oracle. That pair would have caught about half of the
-  bugs in Part 1d without anyone looking for them. **Worth doing first, next time there is a
-  registry.**
-- [ ] **Differential testing.** Generate random valid sources, compile both backends, render
-  both, compare. The two backend divergences found so far (`&&` vs ternary, text spacing) were
-  both caught by reading, not by testing.
+- [x] **A real parser and real React.** `esbuild`, `react` and `react-dom` are now
+  devDependencies — the compiler itself still has none. `test/helpers/real-react.mjs` parses
+  every `.jsx` the compiler writes with esbuild, and renders sources through
+  `react-dom/server` with `console.error` collected: a React warning fails the test
+  (`test/real-react.test.mjs`). The specs skip cleanly if the devDependencies are absent.
+
+  What it confirmed, against React 19.3.1 rather than against my reading of the docs:
+  `readonly` and `maxlength` are **dropped** with a warning; `class`, `for` and `tabindex`
+  warn but still render; a string `style` **throws**; and `onKeyup` is **silent** — no warning
+  at all, the handler simply never fires, which makes that fix more important than it looked.
+  It also cleared a suspicion: React's controlled-input check accepts `onInput`, so the
+  documented `val=q @input=…` idiom is warning-free.
+
+  Its limit: the server renderer does not run the client-only checks (`validateDOMNesting`,
+  the controlled-input warning). Reaching those needs `jsdom` and `react-dom/client`.
+- [x] **The real toolchain, end to end.** `example/application` now installs and builds with
+  Vite in a test (`test/deliverable.test.mjs`): the bundle splits `/stats Stats lazy` and
+  `i Sparkline … lazy` into their own chunks, the imported `.png` goes through the bundler,
+  and `index.html` points at hashed assets rather than `src/`. The specs skip unless
+  `example/application/node_modules` is there, so `npm test` stays light.
+- [x] **The client renderer, in a real DOM.** `jsdom` + `react-dom/client`
+  (`test/helpers/dom.mjs`, `test/dom.test.mjs`) runs the compiler's output where React's
+  development checks actually live — `validateDOMNesting`, the controlled-input warning, the
+  key warning — with any `console.error` failing the test. It covers effects and cleanups,
+  controlled inputs, keyed reordering, StrictMode double-rendering, a store with a hundred
+  consumers, a five-hundred row list and forty levels of nesting.
+- [ ] **A real browser.** jsdom is not Chrome: CSS, layout, the esm.sh preview and
+  `zaal dev`'s live reload have still never been seen working in one.
+- [x] **Differential testing.** `test/helpers/generate.mjs` emits seeded random components —
+  elements, text, interpolation, attributes, `?`/`:?`/`:` chains, maps, a child component,
+  void elements and every falsy expression — and `test/differential.test.mjs` compiles each
+  one both ways, renders both with the same React, and compares the markup and the warnings.
+  A seed reproduces any failure exactly. 300 programs run in the suite; `ZAAL_DIFF_SEEDS=2000`
+  widens it.
+
+  It paid for itself on the first run: **34 differences in 120 programs**, from two causes.
+  The esm backend built interpolated text as a template literal, so `"alpha {flag}"` with a
+  boolean printed `alpha true` where JSX renders `alpha ` — a template stringifies `true`,
+  `null` and `undefined`, while React renders all three as nothing. Text is now split into
+  literal and expression children, exactly as JSX reads it. That left 5, from the spacing rule
+  added in Part 1d being too eager: Babel only collapses a newline into a space *within one
+  JSXText node*, so a line ending in `{expr}` starts a new node and gets no space. Both are
+  pinned as regressions, and 2000 generated programs now agree.
