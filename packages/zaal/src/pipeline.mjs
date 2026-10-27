@@ -53,17 +53,45 @@ function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR, parseApp, p
     .map(f => [f, readFileSync(join(root, srcDir, f), 'utf8')]));
   // Every block in zaal/, so a file referencing a component can be told which `i` line it needs.
   const stores = new Map(), comps = new Map(), clashes = [];
+  // What each store reads (`use { … } = Other`) and where it persists: the provider order has
+  // to follow the first, and two stores may not share the second.
+  const storeDeps = new Map(), storeKeys = new Map();
   for (const [f, src] of sources) {
     const file = f.replace(/\.zaal$/, '');
-    for (const [, head, name] of src.matchAll(/^([CS])[ \t]+([A-Za-z][\w$]*)/gm)) {
-      // One name, two files: a reference to it would resolve to whichever came last.
-      const prev = head === 'S' ? stores.get(name) : comps.get(name)?.file;
-      if (prev && prev !== file) clashes.push(`${head} ${name} is declared in both ${prev}.zaal and ${file}.zaal`);
-      if (head === 'S') stores.set(name, file);
-      else comps.set(name, { file, named: name !== basename(file) });
+    let current = null;
+    for (const line of src.split('\n')) {
+      const block = /^([CS])[ \t]+(\p{Lu}[\p{L}\p{N}_$]*)([ \t].*)?$/u.exec(line);
+      if (block) {
+        const [, head, name, rest = ''] = block;
+        // One name, two files: a reference to it would resolve to whichever came last.
+        const prev = head === 'S' ? stores.get(name) : comps.get(name)?.file;
+        if (prev && prev !== file) clashes.push(`${head} ${name} is declared in both ${prev}.zaal and ${file}.zaal`);
+        if (head === 'S') {
+          stores.set(name, file);
+          storeDeps.set(name, new Set());
+          const persist = /(?:^|[ \t])persist(?:=(\S+))?(?=[ \t]|$)/.exec(rest);
+          if (persist) storeKeys.set(name, persist[1] || `zaal:${name.toLowerCase()}`);
+          current = name;
+        } else {
+          comps.set(name, { file, named: name !== basename(file) });
+          current = null;
+        }
+        continue;
+      }
+      if (!current || !/^[ \t]/.test(line)) { if (!/^[ \t]/.test(line) && line.trim()) current = null; continue; }
+      const reads = /^[ \t]+use\b.*=[ \t]*(\p{Lu}[\p{L}\p{N}_$]*)[ \t]*$/u.exec(line);
+      if (reads) storeDeps.get(current).add(reads[1]);
     }
   }
-  return { app, appSrc, ui, sources, stores, comps, clashes };
+  const sharing = new Map();
+  for (const [name, key] of storeKeys) {
+    if (sharing.has(key)) {
+      clashes.push(`S ${sharing.get(key)} and S ${name} both persist to \`${key}\``
+        + ` — one would overwrite the other`);
+    }
+    sharing.set(key, name);
+  }
+  return { app, appSrc, ui, sources, stores, comps, clashes, storeDeps, storeKeys };
 }
 
 // Compile a project and write it out. `framework` is the target (`@zaal/react`, `@zaal/vue`, …);
@@ -78,7 +106,7 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
       + ` ${framework.name} has ${Object.keys(framework.backends).join(', ')}`);
   }
   const { ext, outDir } = be;
-  const { app, appSrc, ui, sources, stores, comps, clashes } =
+  const { app, appSrc, ui, sources, stores, comps, clashes, storeDeps = new Map() } =
     project({ root, appFile, srcDir, parseApp: framework.parseApp, parseUI: framework.parseUI });
   const made = [], used = new Map(), pkgs = new Map(), assets = new Set();
   inFile(appSrc, appFile, () => { for (const r of app.routes) {
@@ -113,7 +141,8 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
   for (const [name, code] of Object.entries(framework.runtime?.(backend) || {})) {
     files.set(`${OUT_SRC}/${name}`, code);
   }
-  files.set(`${OUT_SRC}/main${ext}`, inFile(appSrc, appFile, () => framework.mainFile(app, backend, stores, comps)));
+  files.set(`${OUT_SRC}/main${ext}`,
+    inFile(appSrc, appFile, () => framework.mainFile(app, backend, stores, comps, storeDeps)));
   files.set('index.html', framework.html(app, backend, pkgs));
   if (ui) files.set(`${OUT_CSS}/ui.css`, framework.uiCss(ui));
   mkdirSync(join(root, outDir), { recursive: true });
@@ -169,7 +198,18 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
 
 /* ---------- static server (esm mode) ---------- */
 
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
+// Enough of the web's media types for the preview to serve what a build can copy into it:
+// a stylesheet as text/plain would not apply, an SVG would not render, a font would not load.
+const MIME = {
+  '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript',
+  '.css': 'text/css', '.json': 'application/json', '.map': 'application/json',
+  '.txt': 'text/plain', '.md': 'text/markdown', '.csv': 'text/csv', '.xml': 'application/xml',
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif', '.ico': 'image/x-icon',
+  '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.otf': 'font/otf',
+  '.mp4': 'video/mp4', '.webm': 'video/webm', '.mp3': 'audio/mpeg', '.wav': 'audio/wav',
+  '.wasm': 'application/wasm', '.pdf': 'application/pdf',
+};
 
 const RELOAD = `<script>new EventSource('/__zaal').onmessage = () => location.reload();</script>`;
 
@@ -204,7 +244,8 @@ function serve(dir, port = 5173, { live = false } = {}) {
     }
     let body = readFileSync(file);
     if (live && file.endsWith('index.html')) body = body.toString().replace('</body>', `  ${RELOAD}\n  </body>`);
-    res.writeHead(200, { 'content-type': MIME[extname(file)] || 'text/plain', 'cache-control': 'no-store' });
+    const type = MIME[extname(file).toLowerCase()] || 'application/octet-stream';
+    res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' });
     res.end(body);
   });
   server.listen(port, () => console.log(`  \u279c  http://localhost:${port}`));
@@ -236,7 +277,10 @@ function watchAndServe({ port = 5173, srcDir = SRC_DIR, framework } = {}) {
       } catch (e) { console.error(`  error: ${e.message}`); }
     }, 60);
   };
-  watch(srcDir, { recursive: true }, (_, f) => f && /\.(zaal|css)$/.test(String(f)) && onChange(f));
+  // Anything under zaal/ is a source, assets included — a changed logo has to be copied over
+  // too. Editor scratch files (`.swp`, `foo~`, dotfiles) are not worth a rebuild.
+  const watched = f => !/(^|[\\/])\.|~$|\.(swp|swx|tmp)$/.test(String(f));
+  watch(srcDir, { recursive: true }, (_, f) => f && watched(f) && onChange(f));
   for (const f of first.app.css.filter(c => !posix(c).startsWith(srcDir + '/'))) {
     if (existsSync(f)) watch(f, () => onChange(f));
   }

@@ -191,3 +191,25 @@ test('a dashed tag is a custom element, classes and all', () => {
   assert.match(jsx('C A\n  my-widget.big val=1 "x"\n'), /<my-widget className="big" value=\{1\}>x<\/my-widget>/);
   assert.match(esm('C A\n  my-widget.big "x"\n'), /h\("my-widget", \{ "className": "big" \}, `x`\)/);
 });
+
+// JSX reads consecutive text lines as one text node and collapses the newline between them
+// into a single space (Babel's rule: every line but the last non-empty one gains a trailing
+// space). `createElement` would run them together, so the esm backend spaces them to match —
+// otherwise the no-install preview renders different words from the build.
+test('two text lines are one space apart in both backends', () => {
+  const src = 'C A p:n\n  p\n    "total:"\n    "{n} items"\n';
+  assert.match(jsx(src), /<p>\n\s*total:\n\s*\{n\} items\n\s*<\/p>/);
+  assert.match(esm(src), /h\("p", null, `total:`, ' ', `\$\{n\} items`\)/);
+});
+
+test('inline text pairs space the same way', () => {
+  assert.match(esm('C A\n  p "a" "b"\n'), /h\("p", null, `a`, ' ', `b`\)/);
+  assert.match(esm('C A\n  p "single"\n'), /h\("p", null, `single`\)/, 'one text stays alone');
+});
+
+test('an element or an expression between text keeps JSX spacing: none', () => {
+  // the whitespace around them contains a newline, which JSX strips entirely
+  assert.match(esm('C A p:n\n  p\n    "total:"\n    b "{n}"\n    "items"\n'),
+    /h\("p", null, `total:`, h\("b", null, n\), `items`\)/);
+  assert.match(esm('C A p:n\n  p\n    "a"\n    {n}\n    "b"\n'), /h\("p", null, `a`, n, `b`\)/);
+});

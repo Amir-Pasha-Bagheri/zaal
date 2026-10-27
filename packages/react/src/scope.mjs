@@ -19,7 +19,7 @@ function compRefs(node, out = new Map()) {
   if (RAW_BODY.has(node.kind)) return out;               // a hook body is JS, not markup
   // `Dialog.Panel` is a reference to `Dialog`: that is the name an `i` line has to bring in.
   const base = node.kind === 'el' ? node.tag.split('.')[0] : null;
-  if (base && /^[A-Z]/.test(base) && !out.has(base)) out.set(base, node);
+  if (base && /^\p{Lu}/u.test(base) && !out.has(base)) out.set(base, node);
   for (const k of node.kids || []) compRefs(k, out);
   return out;
 }
@@ -44,7 +44,7 @@ function moduleScope(ast) {
 function jsNames(node, out = new Set(), inJs = false) {
   const here = inJs || node.kind === 'js';
   if (here && node.raw) {
-    for (const [, n] of node.raw.join(' ').matchAll(/\b(?:const|let|var|function|class)\s+([A-Z][\w$]*)/g)) out.add(n);
+    for (const [, n] of node.raw.join(' ').matchAll(/(?:const|let|var|function|class)\s+(\p{Lu}[\p{L}\p{N}_$]*)/gu)) out.add(n);
   }
   for (const k of node.kids || []) jsNames(k, out, here);
   return out;
@@ -56,6 +56,42 @@ const importHint = (name, c, dir) => c.named
   ? `i { ${name} } from ${rel(dir, c.file)}` : `i ${name} ${rel(dir, c.file)}`;
 
 // Every name the module itself binds: an `i` import, a `C`/`S` block, or a `js` declaration.
+// Every name the module declares at its top level, and the line that declared it. Two of one
+// name is `Identifier 'Btn' has already been declared` — a syntax error in generated code,
+// reported here against the second line instead.
+function declaredOnce(ast) {
+  const seen = new Map();
+  const claim = (name, node, what) => {
+    const prev = seen.get(name);
+    if (prev) fail(node, `${name} is declared twice in this file — ${prev} and ${what}`);
+    seen.set(name, what);
+  };
+  for (const n of ast.kids) {
+    if (n.kind === 'import') {
+      for (const b of importBinds(n)) claim(b, n, `an \`i\` line`);
+    } else if (n.kind === 'comp') {
+      claim(n.name, n, `\`C ${n.name}\``);
+    } else if (n.kind === 'store') {
+      for (const name of [`${n.name}Context`, `${n.name}Provider`, `use${n.name}`]) {
+        claim(name, n, `\`S ${n.name}\``);
+      }
+    } else if (n.kind === 'js') {
+      for (const b of jsDeclared(n)) claim(b, n, 'a `js` line');
+    }
+  }
+}
+
+// const/let/var/function/class at the top level of a `js` block.
+function jsDeclared(n) {
+  const code = [n.code, ...(n.kids || []).map(k => (k.raw || []).join(' '))].join('\n');
+  const out = [];
+  for (const [, one, many] of code.matchAll(/(?:const|let|var|function|class)\s+(?:([\p{L}\p{N}_$]+)|[{[]([^}\]]*)[}\]])/gu)) {
+    if (one) out.push(one);
+    for (const [, id] of (many || '').matchAll(/([\p{L}\p{N}_$]+)\s*(?::\s*[\p{L}\p{N}_$]+)?/gu)) if (id) out.push(id);
+  }
+  return out;
+}
+
 function boundNames(ast) {
   const out = jsNames(ast);
   for (const n of ast.kids) {
@@ -91,4 +127,5 @@ function linkUI(node, ui, used) {
   for (const k of node.kids || []) linkUI(k, ui, used);
 }
 
-export { importBinds, compRefs, moduleScope, jsNames, importHint, boundNames, checkComponents, linkUI };
+export { importBinds, compRefs, moduleScope, jsNames, importHint, boundNames, checkComponents,
+  linkUI, declaredOnce };

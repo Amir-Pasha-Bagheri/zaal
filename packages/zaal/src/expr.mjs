@@ -2,7 +2,7 @@
 // attribute list a markup line carries. `EV`/`ALIAS` are the one target-flavoured piece —
 // a target spelling events or the class attribute differently passes its own tables.
 import { here, fail } from './diagnostics.mjs';
-import { splitAssign, setter, isState } from './parse.mjs';
+import { splitAssign, setter, isState, ID, IDC } from './parse.mjs';
 
 // `"{children}"` is the element, not its text: a string that is one whole `{…}` stays an expression.
 // `\{` is a literal brace.
@@ -10,9 +10,66 @@ const tmpl = s => /^\{[^{}]+\}$/.test(s) ? s.slice(1, -1)
   : '`' + s.replace(/`/g, '\\`')
       .replace(/\\([{}])|\{([^}]+)\}/g, (_, lit, expr) => lit ?? '${' + expr + '}') + '`';
 
+// The short names Zaal adds, then every DOM event React spells differently from the HTML name.
+// Without the second table `@keyup` becomes `onKeyup`, which React never attaches: the handler
+// is silently dead, and nothing says so.
 const EV = { click: 'onClick', input: 'onInput', change: 'onChange', submit: 'onSubmit',
   focus: 'onFocus', blur: 'onBlur', key: 'onKeyDown', over: 'onMouseOver', out: 'onMouseLeave' };
+
+const DOM_EV = {};
+for (const name of [
+  'doubleClick', 'mouseDown', 'mouseUp', 'mouseMove', 'mouseEnter', 'mouseLeave', 'mouseOver',
+  'mouseOut', 'contextMenu', 'keyDown', 'keyUp', 'keyPress', 'focusCapture', 'beforeInput',
+  'compositionStart', 'compositionEnd', 'compositionUpdate', 'dragStart', 'dragEnd', 'dragEnter',
+  'dragLeave', 'dragOver', 'dragExit', 'touchStart', 'touchMove', 'touchEnd', 'touchCancel',
+  'pointerDown', 'pointerUp', 'pointerMove', 'pointerEnter', 'pointerLeave', 'pointerCancel',
+  'pointerOver', 'pointerOut', 'gotPointerCapture', 'lostPointerCapture', 'animationStart',
+  'animationEnd', 'animationIteration', 'transitionEnd', 'scrollEnd', 'canPlay',
+  'canPlayThrough', 'durationChange', 'loadedData', 'loadedMetadata', 'loadStart', 'rateChange',
+  'timeUpdate', 'volumeChange', 'auxClick', 'toggle', 'select', 'wheel', 'scroll', 'drag',
+  'drop', 'load', 'error', 'abort', 'reset', 'invalid', 'copy', 'cut', 'paste', 'play',
+  'playing', 'pause', 'ended', 'seeked', 'seeking', 'stalled', 'suspend', 'waiting', 'progress',
+  'emptied', 'encrypted', 'resize', 'close', 'cancel',
+]) DOM_EV[name.toLowerCase()] = 'on' + name[0].toUpperCase() + name.slice(1);
+DOM_EV.dblclick = DOM_EV.doubleclick;        // the HTML spelling of the same event
+
+// `@ev` -> the React prop. An unknown name still becomes `onXxx`: that is a prop on a
+// component, not a DOM event, and a component may call its callback anything.
+const eventProp = ev => EV[ev] || DOM_EV[ev.toLowerCase()] || 'on' + ev[0].toUpperCase() + ev.slice(1);
 const ALIAS = { c: 'className', val: 'value', ph: 'placeholder' };
+
+// The HTML spelling of a DOM attribute, which React does not accept: `tabindex=0` is dropped
+// with a console warning, `for=` never reaches the label. Markup here looks like HTML, so
+// these are the spellings people (and agents) write — they are translated, not reported.
+const DOM_ATTR = {};
+for (const name of ['className', 'htmlFor', 'tabIndex', 'readOnly', 'maxLength', 'minLength',
+  'autoFocus', 'autoComplete', 'autoPlay', 'spellCheck', 'contentEditable', 'crossOrigin',
+  'dateTime', 'encType', 'formAction', 'formMethod', 'formNoValidate', 'inputMode',
+  'noValidate', 'srcSet', 'srcDoc', 'colSpan', 'rowSpan', 'useMap', 'accessKey',
+  'allowFullScreen', 'playsInline', 'referrerPolicy', 'frameBorder', 'marginWidth',
+  'marginHeight', 'cellPadding', 'cellSpacing', 'charSet', 'httpEquiv', 'viewBox',
+  'preserveAspectRatio', 'strokeWidth', 'strokeLinecap', 'strokeLinejoin', 'fillRule',
+  'clipPath', 'clipRule', 'stopColor', 'stopOpacity', 'textAnchor', 'dominantBaseline',
+]) DOM_ATTR[name.toLowerCase()] = name;
+DOM_ATTR.class = 'className';
+DOM_ATTR.for = 'htmlFor';
+
+// `style="color: red"` — React wants an object, and throws on a string. The text says exactly
+// what the object should be, so it is written out rather than rejected.
+const styleObject = css => {
+  const props = css.split(';').map(d => d.trim()).filter(Boolean).map(d => {
+    const i = d.indexOf(':');
+    if (i < 0) return null;
+    // a custom property keeps its name exactly; everything else camel-cases
+    const raw = d.slice(0, i).trim();
+    const key = raw.startsWith('--') ? raw : raw.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+    const val = d.slice(i + 1).trim();
+    // a value interpolates like any other attribute: `style="width: {w}px"`
+    const code = /(?<!\\)\{[^}]+\}/.test(val) ? tmpl(val) : JSON.stringify(val);
+    return `${/^[A-Za-z][\w]*$/.test(key) ? key : JSON.stringify(key)}: ${code}`;
+  });
+  return props.some(p => p === null) ? null : `{ ${props.join(', ')} }`;
+};
 
 // Split on `;` outside strings and brackets, so `for (i = 0; i < n; i++)` stays one statement.
 function splitStmts(src) {
@@ -36,11 +93,29 @@ function splitStmts(src) {
 // lets the match start at the *closing* quote of one string and end inside the next.
 const interp = s => s.replace(/"([^"\\]*)"/g, (m, inner) => /\{/.test(inner) ? tmpl(inner) : m);
 
+// React state is replaced, never edited in place: `o.a = 1` or `xs.push(x)` changes the object
+// the component is already holding, so nothing re-renders and the bug shows up as a screen that
+// will not update. Both are typed often enough to be worth catching by name.
+const MUTATORS = /^(push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin)$/;
+
+function noMutation(ctx, s) {
+  const own = n => isState(ctx, n) || ctx.globals?.has(n);
+  const how = n => isState(ctx, n)
+    ? `pass a new value to ${setter(n)}(…)` : `call one of its store's actions`;
+  const say = (what, n) => fail(null,
+    `${what} edits ${n} in place, so nothing re-renders — ${how(n)}`);
+  let m = new RegExp(`^(${ID})\\s*(?:\\.${ID}|\\[[^\\]]*\\])+\\s*(?:[-+*/]?)=(?!=)`, 'u').exec(s);
+  if (m && own(m[1])) say(s.trim(), m[1]);
+  m = new RegExp(`^(${ID})\\.(${ID})\\(`, 'u').exec(s);
+  if (m && own(m[1]) && MUTATORS.test(m[2])) say(`${m[1]}.${m[2]}(…)`, m[1]);
+}
+
 // `n++` / `n+=x` / `n=x` on a state name become setter calls; anything else is passed through.
 function rewrite(ctx, s) {
-  let m = /^([\w$]+)(\+\+|--)$/.exec(s);
+  noMutation(ctx, s);
+  let m = new RegExp(`^(${ID})(\\+\\+|--)$`, 'u').exec(s);
   if (m && isState(ctx, m[1])) return `${setter(m[1])}(${m[1]} ${m[2][0]} 1)`;
-  m = /^([\w$]+)\s*([-+*/]?)=\s*(.+)$/.exec(s);
+  m = new RegExp(`^(${ID})\\s*([-+*/]?)=\\s*(.+)$`, 'u').exec(s);
   if (m && isState(ctx, m[1])) return `${setter(m[1])}(${m[2] ? `${m[1]} ${m[2]} (${m[3]})` : m[3]})`;
   if (m && ctx.globals?.has(m[1])) {
     fail(null, `${m[1]} comes from a store — call one of its actions, or ${setter(m[1])}(…)`);
@@ -53,7 +128,7 @@ const fnBody = list => list.length > 1 ? `{ ${list.join('; ')} }` : list[0] || '
 
 function handler(ctx, expr) {
   const list = stmts(ctx, expr);
-  if (list.length === 1 && /^[\w$]+$/.test(list[0])) return list[0];  // bare fn reference
+  if (list.length === 1 && new RegExp(`^${ID}$`, 'u').test(list[0])) return list[0];  // bare fn
   const arg = /\be\b/.test(expr) ? 'e' : '';                          // event param only when used
   return `(${arg}) => ${fnBody(list)}`;
 }
@@ -72,38 +147,62 @@ function unbrace(v) {
   return /^\s*(?:\.\.\.|["'\w$]+\s*:)/.test(inner) ? v : inner;
 }
 
+// Two values for one attribute: JSX keeps the last and drops the first without a word, so
+// `%card c="wide"` would quietly lose the kit's own classes. Classes are the one pair worth
+// joining — that is what the author meant — and everything else is a mistake worth reporting.
+const classPart = p => (p.str ? p.v : '${' + p.v + '}');
+
+function addPair(node, pairs, pair) {
+  const prev = pairs.find(p => p.k === pair.k);
+  if (!prev) { pairs.push(pair); return; }
+  if (pair.k !== 'className') {
+    fail(node, `${pair.k} is set twice on <${node.tag}> — one of the two would be dropped`);
+  }
+  if (prev.str && pair.str) { prev.v = `${prev.v} ${pair.v}`; return; }
+  prev.v = '`' + classPart(prev) + ' ' + classPart(pair) + '`';
+  prev.str = false;
+}
+
 // -> { pairs: [{k, v, str}], spreads: [expr], text: [raw strings] }
 function attrParts(ctx, node) {
   here(node);
   const pairs = [], spreads = [], text = [];
-  if (node.id) pairs.push({ k: 'id', v: node.id, str: true });
-  if (node.classes.length) pairs.push({ k: 'className', v: node.classes.join(' '), str: true });
+  const push = pair => addPair(node, pairs, pair);
+  if (node.id) push({ k: 'id', v: node.id, str: true });
+  if (node.classes.length) push({ k: 'className', v: node.classes.join(' '), str: true });
   for (const a of node.attrs) {
     if (a.startsWith('"')) { text.push(a.slice(1, -1)); continue; }
     if (a.startsWith('...')) {
       const x = a.slice(3);
-      if (/^[a-zA-Z_$][\w$]*$/.test(x) && !ctx.spread?.has(x)) ctx.spread?.set(x, node);
+      if (new RegExp(`^${ID}$`, 'u').test(x) && !ctx.spread?.has(x)) ctx.spread?.set(x, node);
       spreads.push(x);
       continue;
     }
     if (a.startsWith('@')) {
       const [ev, ...rest] = a.slice(1).split('=');
-      pairs.push({ k: EV[ev] || 'on' + ev[0].toUpperCase() + ev.slice(1), v: handler(ctx, unbrace(rest.join('='))) });
+      push({ k: eventProp(ev), v: handler(ctx, unbrace(rest.join('='))) });
       continue;
     }
     const eq = a.indexOf('=');
-    if (eq < 0) { pairs.push({ k: a, v: 'true' }); continue; }
+    const dom = /^\p{Ll}/u.test(node.tag) && !node.tag.includes('.');   // a DOM element, not a component
+    if (eq < 0) { push({ k: dom && DOM_ATTR[a] || a, v: 'true' }); continue; }
     const k = a.slice(0, eq), v = a.slice(eq + 1);
-    const key = ALIAS[k] || k;
+    const key = ALIAS[k] || (dom && DOM_ATTR[k.toLowerCase()]) || k;
+    if (key === 'style' && v.startsWith('"')) {
+      const obj = styleObject(v.slice(1, -1));
+      if (!obj) fail(node, `style="${v.slice(1, -1)}": not a list of CSS declarations`);
+      push({ k: 'style', v: obj });
+      continue;
+    }
     // `title="{n} items"` interpolates, the way a text node does; a string with no `{…}` in it
     // stays a plain string literal.
     if (v.startsWith('"')) {
       const inner = v.slice(1, -1);
-      if (/(?<!\\)\{[^}]+\}/.test(inner)) pairs.push({ k: key, v: tmpl(inner) });
-      else pairs.push({ k: key, v: inner.replace(/\\([{}])/g, '$1'), str: true });
-    } else pairs.push({ k: key, v: unbrace(v) });
+      if (/(?<!\\)\{[^}]+\}/.test(inner)) push({ k: key, v: tmpl(inner) });
+      else push({ k: key, v: inner.replace(/\\([{}])/g, '$1'), str: true });
+    } else push({ k: key, v: unbrace(v) });
   }
   return { pairs, spreads, text };
 }
 
-export { EV, ALIAS, tmpl, interp, splitStmts, rewrite, stmts, fnBody, handler, unbrace, attrParts };
+export { EV, ALIAS, DOM_ATTR, tmpl, interp, splitStmts, rewrite, stmts, fnBody, handler, unbrace, attrParts };

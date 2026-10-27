@@ -37,3 +37,25 @@ test('reload() pushes an event to a connected client', async () => {
     server.close();
   }
 });
+
+// The preview serves whatever a build copied into it, assets included: a stylesheet answered
+// as text/plain would not apply and an SVG would not render.
+test('every file the build writes is served with its own media type', async () => {
+  const root = projectDir({
+    'zaal/app.zaal': 'A D\n  ui ./ui.zaal\n  / Home\n',
+    'zaal/ui.zaal': 'D U\nk page main\n  p 0\n',
+    'zaal/pages/Home.zaal': 'i logo ../img/logo.svg\nC Home\n  %page\n    img src=logo\n',
+    'zaal/img/logo.svg': '<svg xmlns="http://www.w3.org/2000/svg"/>',
+  });
+  buildIn(root, 'esm');
+  const server = serve(join(root, '.zaal-dev'), 0);
+  await once(server.server, 'listening');
+  const port = server.server.address().port;
+  const type = async path => (await fetch(`http://127.0.0.1:${port}${path}`)).headers.get('content-type');
+  try {
+    assert.equal(await type('/'), 'text/html');
+    assert.equal(await type('/src/main.js'), 'text/javascript');
+    assert.equal(await type('/src/styles/ui.css'), 'text/css');
+    assert.equal(await type('/src/img/logo.svg'), 'image/svg+xml');
+  } finally { server.close(); }
+});

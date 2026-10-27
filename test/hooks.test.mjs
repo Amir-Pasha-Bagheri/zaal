@@ -198,9 +198,14 @@ test('three effects with different suffixes in one component', () => {
   assert.match(out, /always\(n\);\n\s*\}\);/);
 });
 
+// An arrow body that starts with `{` is a block, so an object has to be parenthesised —
+// without the parens this was a syntax error in the generated module.
 test('a memo expression may hold an object or a ternary with braces', () => {
   const out = jsx('C A p:a s:n=0\n  memo style = { color: a ? "red" : "blue", width: n }\n  div style=style\n');
-  assert.match(out, /const style = useMemo\(\(\) => \{ color: a \? "red" : "blue", width: n \}, \[a, n\]\);/);
+  assert.match(out, /const style = useMemo\(\(\) => \(\{ color: a \? "red" : "blue", width: n \}\), \[a, n\]\);/);
+  assert.match(jsx('C A\n  cb mk() = { x: 1 }\n  p "y"\n'), /useCallback\(\(\) => \(\{ x: 1 \}\), \[\]\)/);
+  assert.match(jsx('C A s:n=0\n  cb two() = log(1); log(2)\n  p "y"\n'),
+    /useCallback\(\(\) => \{ log\(1\); log\(2\) \}, \[\]\)/, 'a real block is still a block');
 });
 
 test('hooks and js lines interleave in source order', () => {
@@ -250,4 +255,24 @@ test('two string literals on one line stay two strings', () => {
 test('only the literal that holds braces becomes a template', () => {
   const out = jsx('C A p:n\n  cb go() = a("plain"); b("n is {n}")\n  p "x"\n');
   assert.match(out, /a\("plain"\); b\(`n is \$\{n\}`\)/);
+});
+
+// `memo`, `use`, `ctx` and a `ref` initial value run while the component renders, so a name
+// declared further down is still in its temporal dead zone — a crash on first paint.
+test('a render-time hook may not name a value declared below it', () => {
+  assert.throws(() => jsx('C A\n  memo a = b + 1\n  memo b = 2\n  p "x"\n'),
+    /b is declared below this line, so `memo` would read it before it exists/);
+  assert.throws(() => jsx('C A\n  use a = f(b)\n  memo b = 2\n  p "x"\n'), /`use` would read it/);
+  assert.throws(() => jsx('C A\n  ref r = b\n  memo b = 2\n  p "x"\n'), /`ref` would read it/);
+});
+
+test('a deferred body may: fx and cb run after the whole component is built', () => {
+  assert.match(jsx('C A p:a\n  fx go()\n  cb go() = log(a)\n  p "x"\n'), /useEffect/);
+  assert.match(jsx('C A\n  cb a() = b()\n  cb b() = 1\n  button @click=a "x"\n'), /const a = useCallback/);
+});
+
+test('a `use` pattern contributes each name it binds, not the pattern text', () => {
+  const out = jsx('C A s:n=0\n  use [v, setV] = useState(0)\n  use [pending, start] = useTransition()\n  p "{v}{pending}"\n');
+  assert.match(out, /const \[v, setV\] = useState\(0\);/);
+  assert.match(out, /const \[pending, start\] = useTransition\(\);/);
 });

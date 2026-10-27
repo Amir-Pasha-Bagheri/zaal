@@ -62,7 +62,10 @@ one (`store Theme Todos  // outermost first`); inside a quoted string it is text
 | `S Cart s:items=[]` | a store: context + `CartProvider` + `useCart()` — see **Global state** |
 
 `p:` = prop (`=` gives a default), `s:` = state (`=` gives the initial value). Each has to be a
-name, and every block in a file has to have a name of its own.
+name, and every block in a file has to have a name of its own. A block's name starts with a
+capital (React reads a lower-case tag as a DOM element); names may hold any letter — `C Café
+p:prénom` — but not a JavaScript keyword, and not a name the generated module writes itself
+(`value`/`children` in a store, `error`/`reset` in a boundary, a setter another `s:` needs).
 
 **Error boundaries** — `C Oops catch` generates the class, because no hook catches a render error.
 The children render while nothing has thrown; the markup is the fallback, with `error` and `reset`
@@ -92,8 +95,16 @@ Attributes:
 - `...rest` → spread. A spread naming nothing in scope makes it a rest prop on the component
   (`input ...rest` → `function Field({ ...rest })`), the way `{children}` does — no `p:` line needed.
   Two such names in one component is an error: only one can be the rest prop.
-- shorthands: `c=` → `className`, `val=` → `value`
-- `@click=`, `@input=`, `@change=`, `@submit=`, `@key=`… → `onClick` etc. (unknown name → `onXxx`)
+- shorthands: `c=` → `className`, `val=` → `value`, `ph=` → `placeholder`
+- on a DOM element the HTML spelling of an attribute is translated — `class`, `for`,
+  `tabindex`, `readonly`, `colspan`, `viewbox`… all reach React under the name it wants
+- `style="color: red; width: {w}px"` becomes the object React requires (a custom property
+  keeps its name); `style={…}` is still an object as written
+- `@click=`, `@input=`, `@change=`, `@submit=`, `@key=`… → `onClick` etc. A DOM event gets
+  React's spelling, whatever case you write (`@keyup` → `onKeyUp`, `@dblclick` → `onDoubleClick`);
+  any other name is a callback prop (`@pick` → `onPick`)
+- an attribute set twice is an error — except classes, which are joined: `%card c="wide"` is
+  `className="card wide"`, and `%card c=extra` is `` className={`card ${extra}`} ``
 
 Text: a quoted string, inline (`h1 "hi"`) or on its own line. `{expr}` inside interpolates,
 and `\{` is a literal brace.
@@ -142,6 +153,8 @@ element, `i X ./X` is an import.
 
 ## Handlers (`@ev=`)
 - `n++` / `n--` / `n=x` / `n+=x` on a **state** name → `setN(...)`
+- state is replaced, never edited: `o.a = 1` or `xs.push(x)` on a state name is a build error,
+  because React would not re-render
 - mentions `e` → arrow gets the event param
 - `;` separates statements; a bare identifier passes the function by reference
 - `"a {b}"` interpolates, as in text — so `@click=log("n is {n}")` works
@@ -190,6 +203,9 @@ belongs to the app (`css ./styles/extra.css` in `app.zaal`).
 | `use <call>` | the same for a hook that hands nothing back (`use useLayoutEffect(…)`) |
 | `js const x = 1` | emitted verbatim in the body |
 
+A hook that is evaluated while the component renders (`memo`, `use`, `ctx`, a `ref` initial
+value) may only name what is written above it, which is the order the dependency scan reads too.
+
 `use` is the escape hatch, so `useReducer`, `useId`, a custom `useFetch` and friends all fit:
 `use [log, dispatch] = useReducer(reduce, [])`. Every hook React itself owns is imported on
 sight; a custom hook still needs an `i` line. A hook has to run on every render, so it belongs
@@ -232,6 +248,8 @@ an earlier hook's name is a build error, as is a name that is not an identifier.
 
 A hook line nested inside markup is an error: they belong to the component, not to an element.
 `fx`, `memo`, `cb`, `ref`, `ctx` and `use` are reserved heads — no element may be named one.
+A suffix (`!`, `*`, `[a b]`) belongs to the three hooks that have a dependency array, and every
+name in `[a b]` has to be a prop, a state or a value the component declares.
 
 ## Global state (`S Name`)
 A store is a component with no markup: whatever it declares becomes its context value. Every
@@ -264,8 +282,10 @@ Store values are read-only in a component: assigning one (`items=[]` in a handle
 error pointing at the action or `setItems` instead — only the store mutates its own state.
 
 Every `S` block found in `zaal/` is wrapped around the app in `main.jsx` automatically, so there
-is no provider to mount by hand. One `store` line in `app.zaal` fixes the nesting when it
-matters (outermost first) — which is what one store reading another needs:
+is no provider to mount by hand, and a store that reads another is nested inside it — the order
+follows what the stores actually read. A `store` line fixes the order of the rest (outermost
+first); one that contradicts a store's own reads, or two stores reading each other, is a build
+error:
 ```
 A Demo
   store Theme Todos
@@ -346,12 +366,13 @@ generates are removed on every build — at any depth, and an emptied directory 
 renamed or deleted `.zaal` leaves nothing live behind. Other files (images, fonts) are left alone.
 A build that fails writes nothing at all, so the last good output stays runnable.
 
-**In scope for free** — no `i` line: `Link`, `go` and `useRoute` from the router, and React's own
-`Suspense`, `StrictMode` and `Profiler`. A name the file declares itself always wins.
+**In scope for free** — no `i` line: `Link`, `go`, `useRoute` and `useQuery` from the router, and
+React's own `Suspense`, `StrictMode` and `Profiler`. A name the file declares itself always wins.
 ```
 Link to="/about" "About"        // the active link gets data-active
 cb save() = post(); go("/done") // navigate from code
-use path = useRoute()           // the current path
+use path = useRoute()           // the current path, without the query
+use { tab } = useQuery()        // ?tab=stats — the query as an object
 ```
 React's other exports come from an `i` line that is folded into the module's own React import:
 `i { startTransition } from react`.

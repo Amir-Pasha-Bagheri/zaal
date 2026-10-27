@@ -1,9 +1,9 @@
 // One .zaal source -> one React module.
-import { parse, memberTags, fail, rel, CDN } from 'zaal';
+import { parse, memberTags, fail, rel, escRe, CDN } from 'zaal';
 import { aliases, EL, FRAG } from './markup.mjs';
 import { component, boundary, reactNames, lineText } from './component.mjs';
 import { store } from './store.mjs';
-import { moduleScope, linkUI, checkComponents, compRefs, boundNames } from './scope.mjs';
+import { moduleScope, linkUI, checkComponents, compRefs, boundNames, declaredOnce } from './scope.mjs';
 import { importLine } from './imports.mjs';
 import { REACT_COMPS, ROUTER_EXPORTS, REACT_HOOKS } from './names.mjs';
 
@@ -21,13 +21,15 @@ function compile(src, target = 'jsx',
   // The default export is the block named after the file, or the first one if none matches.
   const blocks = ast.kids.filter(n => n.kind === 'comp' || n.kind === 'store').map(n => n.name);
   const def = blocks.includes(main) ? main : blocks[0];
-  // Two blocks of one name would be two declarations of it in the module.
+  // Two blocks of one name would be two declarations of it in the module — and so would a
+  // block and an import, or two imports.
   const twice = new Set();
   for (const n of ast.kids) {
     if (n.kind !== 'comp' && n.kind !== 'store') continue;
     if (twice.has(n.name)) fail(n, `${n.kind === 'store' ? 'S' : 'C'} ${n.name} is declared twice in this file`);
     twice.add(n.name);
   }
+  declaredOnce(ast);
   for (const n of ast.kids) {
     if (n.kind === 'import') {
       const own = reactNames(n);
@@ -55,7 +57,7 @@ function compile(src, target = 'jsx',
   const own = new Set([...boundNames(ast), ...moduleScope(ast)]);
   const tags = compRefs(ast), code = codes.join(' ');
   const uses = n => !own.has(n)
-    && (tags.has(n) || new RegExp(`(?<![\\w$.])${n}(?![\\w$])`).test(code));
+    && (tags.has(n) || new RegExp(`(?<![\\p{L}\\p{N}_$.])${escRe(n)}(?![\\p{L}\\p{N}_$])`, 'u').test(code));
   const fromRouter = ROUTER_EXPORTS.filter(uses);
   if (fromRouter.length) imports.push(`import { ${fromRouter.join(', ')} } from '${rel(dir, 'router')}${ext}';`);
   for (const n of REACT_COMPS) if (!own.has(n) && tags.has(n)) fromReact.add(n);

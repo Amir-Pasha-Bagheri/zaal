@@ -131,3 +131,50 @@ test('a :param route and a lazy route coexist in one table', () => {
   const main = buildIn(app, 'jsx');
   assert.equal(main.app.routes.length, 3);
 });
+
+// A query string is not part of the path: it must neither break a match nor leak into a
+// :param, and it has to be readable.
+test('a query string leaves the path alone', () => {
+  const routes = [{ path: '/', component: Page('home') }, { path: '/item/:id', component: Page('item') }];
+  assert.match(at('#/?q=pika', routes).app.html, /home/, 'the root still matches');
+  assert.match(at('#/item/7?tab=stats', routes).app.html, /"id":"7"/, 'the param stops at the ?');
+  assert.doesNotMatch(at('#/item/7?tab=stats', routes).app.html, /tab/);
+});
+
+test('useQuery reads the query as an object', () => {
+  const Probe = () => h('p', null, JSON.stringify(router.useQuery()));
+  reset(); installEnv({ hash: '#/x?tab=stats&page=2' });
+  assert.match(mount(h(Probe, {})).html, /\{"tab":"stats","page":"2"\}/);
+  reset(); installEnv({ hash: '#/x' });
+  assert.match(mount(h(Probe, {})).html, /\{\}/);
+  reset(); installEnv({ hash: '#/x?a=one%20two&flag' });
+  assert.match(mount(h(Probe, {})).html, /"a":"one two"/);
+});
+
+test('useRoute drops the query, and both follow a navigation', () => {
+  const Probe = () => h('p', null, `${router.useRoute()} ${JSON.stringify(router.useQuery())}`);
+  reset();
+  const env = installEnv({ hash: '#/a?x=1' });
+  const app = mount(h(Probe, {}));
+  assert.match(app.html, /\/a \{"x":"1"\}/);
+  env.navigate('/b?y=2');
+  assert.match(app.html, /\/b \{"y":"2"\}/);
+});
+
+// A half-written escape is a bad URL, not a reason to throw while rendering.
+test('a malformed percent escape does not crash the render', () => {
+  const routes = [{ path: '/item/:id', component: Page('item') }];
+  assert.match(at('#/item/%zz', routes).app.html, /"id":"%zz"/);
+  assert.match(at('#/item/a%20b', routes).app.html, /"id":"a b"/);
+});
+
+test('Link marks the active route, query or not', () => {
+  reset(); installEnv({ hash: '#/dex?page=2' });
+  const app = mount(h('div', null,
+    h(router.Link, { to: '/dex' }, 'exact path'),
+    h(router.Link, { to: '/dex?page=2' }, 'path and query'),
+    h(router.Link, { to: '/other' }, 'elsewhere')));
+  assert.match(app.html, /<a href="#\/dex" data-active="true">exact path<\/a>/);
+  assert.match(app.html, /<a href="#\/dex\?page=2" data-active="true">path and query<\/a>/);
+  assert.match(app.html, /<a href="#\/other">elsewhere<\/a>/);
+});

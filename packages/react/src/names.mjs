@@ -15,7 +15,7 @@ const VITE_V = '^5.4.0', PLUGIN_V = '^4.3.1';
 // (anything not listed) still needs an `i` import line.
 // React's own components, and the router's exports: in scope on sight, the way `Link` already is.
 const REACT_COMPS = ['Suspense', 'StrictMode', 'Profiler'];
-const ROUTER_EXPORTS = ['Link', 'go', 'useRoute'];
+const ROUTER_EXPORTS = ['Link', 'go', 'useRoute', 'useQuery'];
 
 const REACT_HOOKS = ['useState', 'useEffect', 'useLayoutEffect', 'useMemo', 'useCallback', 'useRef',
   'useContext', 'useReducer', 'useId', 'useTransition', 'useDeferredValue', 'useOptimistic',

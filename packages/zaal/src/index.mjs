@@ -6,7 +6,7 @@
 export { tokens } from './lex.mjs';
 export { here, fail, located, inFile } from './diagnostics.mjs';
 export { parse, lineNode, attrList, selector, memberTags, hookNode, splitAssign,
-  IDENT, setter, RAW_BODY } from './parse.mjs';
+  IDENT, ID, IDC, escRe, isName, nameError, setter, RAW_BODY } from './parse.mjs';
 export { EV, ALIAS, tmpl, interp, splitStmts, rewrite, stmts, fnBody, handler, unbrace,
   attrParts } from './expr.mjs';
 export { editDistance, nearest } from './suggest.mjs';

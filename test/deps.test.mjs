@@ -138,3 +138,29 @@ test('the store value memo lists state and every reactive declaration', () => {
   const out = jsx('S Cart s:items=[]\n  ref seen\n  memo n = items.length\n  cb add(x) = items=[...items,x]\n');
   assert.match(out, /const value = useMemo\(\(\) => \(\{ items, setItems, seen, n, add \}\), \[items, n, add\]\);/);
 });
+
+// An explicit dependency list is code: `fx[zzz]` emits `}, [zzz])`, a ReferenceError the
+// moment the component mounts.
+test('a pinned dependency has to exist in the component', () => {
+  assert.throws(() => jsx('C A s:n=0\n  fx[zzz] log(n)\n  p "x"\n'),
+    /fx\[zzz\]: zzz is not a prop, a state, or a value this component declares/);
+  assert.throws(() => jsx('C A\n  memo[x] t = 1\n  p "{t}"\n'), /memo\[x\]: x is not a prop/);
+});
+
+test('props, state, setters, hook values and imports are all legal deps', () => {
+  const ok = src => assert.doesNotThrow(() => jsx(src), src);
+  ok('C A p:a p:b\n  fx[a] log(b)\n  p "x"\n');
+  ok('C A p:a\n  fx[a.b] log(a)\n  p "x"\n');
+  ok('C A s:n=0\n  fx[setN] log(n)\n  p "x"\n');
+  ok('i thing ./thing\nC A\n  fx[thing] log(thing)\n  p "x"\n');
+  ok('C A p:a\n  memo t = 1\n  fx[t a] log(t)\n  p "x"\n');
+});
+
+// Only the hooks that have a dependency array may carry a suffix.
+test('a suffix on ref, ctx or use is an error, not a no-op', () => {
+  assert.throws(() => jsx('C A\n  ref! box\n  div ref=box\n'), /`ref` has no dependencies/);
+  assert.throws(() => jsx('C A\n  ctx! t = Ctx\n  p "{t}"\n'), /`ctx` has no dependencies/);
+  assert.throws(() => jsx('C A p:a\n  use[a] x = f(a)\n  p "{x}"\n'), /`use` has no dependencies/);
+  assert.doesNotThrow(() => jsx('C A p:a\n  fx! log(a)\n  p "x"\n'));
+  assert.doesNotThrow(() => jsx('C A p:a\n  memo* t = a\n  p "{t}"\n'));
+});

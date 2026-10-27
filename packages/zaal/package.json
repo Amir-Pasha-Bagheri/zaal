@@ -13,9 +13,9 @@
   "engines": { "node": ">=20" },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YOUR-USERNAME/zaal.git",
+    "url": "git+https://github.com/Amir-Pasha-Bagheri/zaal.git",
     "directory": "packages/zaal"
   },
-  "homepage": "https://github.com/YOUR-USERNAME/zaal/tree/main/packages/zaal",
-  "bugs": "https://github.com/YOUR-USERNAME/zaal/issues"
+  "homepage": "https://github.com/Amir-Pasha-Bagheri/zaal/tree/main/packages/zaal",
+  "bugs": "https://github.com/Amir-Pasha-Bagheri/zaal/issues"
 }

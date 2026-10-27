@@ -38,8 +38,8 @@ What this package holds: the lexer and parser, the expression and statement form
 and the pipeline that reads a project, compiles every source against it, writes the output,
 serves it and rebuilds on change. What it does not hold: anything about React, CSS or routing.
 The design system and app model are
-[`@zaal/web`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/web); the code generation
+[`@zaal/web`](https://github.com/Amir-Pasha-Bagheri/zaal/tree/main/packages/web); the code generation
 is a target such as
-[`@zaal/react`](https://github.com/YOUR-USERNAME/zaal/tree/main/packages/react).
+[`@zaal/react`](https://github.com/Amir-Pasha-Bagheri/zaal/tree/main/packages/react).
 
-The language itself is **[SPEC.md](https://github.com/YOUR-USERNAME/zaal/blob/main/SPEC.md)**.
+The language itself is **[SPEC.md](https://github.com/Amir-Pasha-Bagheri/zaal/blob/main/SPEC.md)**.

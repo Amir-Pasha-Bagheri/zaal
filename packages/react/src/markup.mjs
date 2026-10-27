@@ -12,11 +12,35 @@ function chainOf(kids, i) {
   while (kids[i + 1]?.kind === 'else') chain.push(kids[++i]);
   for (const [j, c] of chain.entries()) {
     if (!c.test && j !== chain.length - 1) fail(c, '`:` is the last branch — write `:?cond` to test again');
+    checkBody(c);
   }
   return [chain, i];
 }
 
+// `?a` or `*xs as x` with nothing under it renders nothing at all — in practice the child is
+// there but one indent short, which is worth saying rather than quietly emitting an empty node.
+// The `*` line owns the key of what it renders, so a `key=` on one of its children would be a
+// second key on the same element — one of the two silently dropped.
+function checkKeys(map) {
+  for (const kid of map.kids) {
+    if (kid.kind === 'el' && (kid.attrs || []).some(a => a.startsWith('key='))) {
+      fail(kid, `<${kid.tag}> already gets its key from the \`*\` line — drop the \`key=\``);
+    }
+  }
+}
+
+function checkBody(k) {
+  if (k.kids.length) return;
+  const head = k.kind === 'map' ? `*${k.list}` : k.test ? `?${k.test}` : ':';
+  fail(k, `${head} has nothing under it — indent the markup it should render`);
+}
+
 function checkMarkup(k) {
+  // A slot fills a prop, so it only means anything directly under a component. Anywhere else
+  // it reached the element writer as a node with no tag and crashed there.
+  if (k.kind === 'slot') {
+    fail(k, `slot ${k.name}: a slot fills a prop on a component, so it has to sit directly under one`);
+  }
   if (MARKUP.has(k.kind)) return;
   if (k.kind === 'else') fail(k, `\`${k.test ? ':?' + k.test : ':'}\` needs a \`?\` branch directly above it`);
   if (k.kind === 'hook' || k.kind === 'line') fail(k, 'hook lines must be direct children of `C`');
@@ -26,15 +50,24 @@ function checkMarkup(k) {
 // `slot x` fills a prop with markup, so it only means something on a component.
 function slots(n) {
   const list = n.kids.filter(k => k.kind === 'slot');
+  const seen = new Set();
   for (const sl of list) {
-    if (!/^[A-Z]/.test(n.tag)) fail(sl, `slot ${sl.name}: <${n.tag}> is not a component`);
+    if (!/^\p{Lu}/u.test(n.tag)) fail(sl, `slot ${sl.name}: <${n.tag}> is not a component`);
     if (!sl.kids.length) fail(sl, `slot ${sl.name}: nothing to pass`);
+    if (seen.has(sl.name)) fail(sl, `slot ${sl.name} is filled twice — only the last would arrive`);
+    seen.add(sl.name);
   }
   return list;
 }
 
 // `\{` -> a literal brace, which JSX can only say as an expression.
-const jsxText = s => s.replace(/\\([{}])/g, (_, c) => `{'${c}'}`);
+// `\{` is a literal brace — and so is any brace that does not pair into a `{expr}`: `a { b` is
+// a JSX syntax error and `a {} b` silently renders nothing, while the esm backend prints both
+// as the text they are. The two backends have to agree, so both are escaped here.
+const jsxText = s => s.replace(/\\([{}])|\{[^{}]+\}|[{}<]|&[#\w]+;/g,
+  (m, lit) => lit ? `{'${lit}'}`
+    : m.length > 1 && m[0] === '{' ? m                      // a real `{expr}`, left alone
+    : `{'${m}'}`);                                          // `{`, `}`, `<`, `&amp;` — text
 
 function jsxKids(ctx, kids, ind) {
   const out = [], pad = ' '.repeat(ind);
@@ -55,6 +88,8 @@ function jsxKids(ctx, kids, ind) {
       continue;
     }
     if (k.kind === 'map') {
+      checkBody(k);
+      checkKeys(k);
       const body = jsxNode(ctx, { kind: 'frag', kids: k.kids }, ind + 2, k.key ?? 'i');
       out.push(`${pad}{${k.list}.map((${k.item}, i) => (\n${body}\n${pad}))}`);
       continue;
@@ -102,11 +137,14 @@ function jsxNode(ctx, n, ind, key) {
 // source mentions the letter anywhere.
 let EL = 'h', FRAG = 'F';
 const aliases = src => {
-  const free = n => (new RegExp(`(?<![\\w$])${n}(?![\\w$])`).test(src) ? '_' + n : n);
+  const free = n => (new RegExp(`(?<![\\p{L}\\p{N}_$])${n}(?![\\p{L}\\p{N}_$])`, 'u').test(src) ? '_' + n : n);
   EL = free('h'); FRAG = free('F');
 };
 
-function esmKids(ctx, kids) {
+// JSX reads consecutive text lines as one text node and collapses the newline between them
+// into a single space, so `p` over `"total:"` and `"5 items"` renders `total: 5 items`.
+// `createElement` would run them together, and the preview has to render what the build does.
+function esmKids(ctx, kids, textAt = new Set()) {
   const out = [];
   for (let i = 0; i < kids.length; i++) {
     const k = kids[i];
@@ -125,10 +163,13 @@ function esmKids(ctx, kids) {
       continue;
     }
     if (k.kind === 'map') {
+      checkBody(k);
+      checkKeys(k);
       out.push(`${k.list}.map((${k.item}, i) => ${esmNode(ctx, { kind: 'frag', kids: k.kids }, k.key ?? 'i')})`);
       continue;
     }
-    out.push(esmNode(ctx, k));
+    out.push(esmNode(ctx, k), ...(k.kind === 'text' ? [] : []));
+    if (k.kind === 'text') textAt.add(out.length - 1);
   }
   return out;
 }
@@ -137,7 +178,7 @@ function esmNode(ctx, n, key) {
   if (n.kind === 'text') return tmpl(n.value);
   if (n.kind === 'expr') return n.code;
   if (n.kind === 'frag') {
-    const k = esmKids(ctx, n.kids);
+    const k = spaced(ctx, n.kids);
     if (k.length === 1 && (!key || PLAIN.has(n.kids[0].kind))) return key ? withKey(k[0], key) : k[0];
     return `${EL}(${FRAG}, ${key ? `{ key: ${key} }` : 'null'}, ${k.join(', ')})`;
   }
@@ -150,9 +191,23 @@ function esmNode(ctx, n, key) {
   const props = !spreads.length ? (entries.length ? `{ ${entries.join(', ')} }` : 'null')
     : !entries.length && spreads.length === 1 ? spreads[0]          // forwarding props, nothing else
     : `Object.assign({${entries.join(', ')}}, ${spreads.join(', ')})`;
-  const tag = /^[a-z]/.test(n.tag) && !n.tag.includes('.') ? JSON.stringify(n.tag) : n.tag;
-  const kids = [...text.map(tmpl), ...esmKids(ctx, rest)];
+  const tag = /^\p{Ll}/u.test(n.tag) && !n.tag.includes('.') ? JSON.stringify(n.tag) : n.tag;
+  // Inline text (`p "a" "b"`) lands on its own line in JSX too, so it spaces the same way.
+  const inline = text.map(tmpl);
+  for (let i = inline.length - 1; i > 0; i--) inline.splice(i, 0, "' '");
+  const after = spaced(ctx, rest);
+  const kids = [...inline, ...(inline.length && rest[0]?.kind === 'text' ? ["' '"] : []), ...after];
   return `${EL}(${tag}, ${props}${kids.length ? ', ' + kids.join(', ') : ''})`;
+}
+
+// Children of one element, with a `' '` between two that came from text lines.
+function spaced(ctx, kids) {
+  const textAt = new Set();
+  const out = esmKids(ctx, kids, textAt);
+  for (let i = out.length - 1; i > 0; i--) {
+    if (textAt.has(i) && textAt.has(i - 1)) out.splice(i, 0, "' '");
+  }
+  return out;
 }
 
 // Put a key into an element the backend has already written, or wrap what cannot take one.

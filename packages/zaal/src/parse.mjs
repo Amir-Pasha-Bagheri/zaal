@@ -32,7 +32,31 @@ function parse(src) {
   return root;
 }
 
-const IDENT = /^[A-Za-z_$][\w$]*$/;
+// JavaScript identifiers are not ASCII-only, and neither are the names people give their own
+// components: `C Café p:prénom` is a name in both languages.
+const IDENT = /^[\p{L}_$][\p{L}\p{N}_$]*$/u;
+const CAPITAL = /^\p{Lu}[\p{L}\p{N}_$]*$/u;
+// The same two pieces as text, for the regexes that have to be built by hand.
+const ID = '[\\p{L}_$][\\p{L}\\p{N}_$]*';     // an identifier
+const IDC = '[\\p{L}\\p{N}_$]';                 // a character that may not touch one
+
+// A name goes into a RegExp as text, and `$` is both a legal identifier character and an
+// anchor: without this, `$ref` matched nothing and every hook that used it lost its dependency.
+const escRe = n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// A name has to survive being written into the generated module. `p:class` reads fine in Zaal
+// and lands as `function A({ class })`, which is a syntax error a long way from the line that
+// caused it — so a keyword is rejected here, by name.
+const RESERVED = new Set(['break', 'case', 'catch', 'class', 'const', 'continue', 'debugger',
+  'default', 'delete', 'do', 'else', 'enum', 'export', 'extends', 'false', 'finally', 'for',
+  'function', 'if', 'import', 'in', 'instanceof', 'new', 'null', 'return', 'super', 'switch',
+  'this', 'throw', 'true', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield', 'let',
+  'static', 'implements', 'interface', 'package', 'private', 'protected', 'public', 'await',
+  'arguments', 'eval']);
+
+const isName = n => IDENT.test(n) && !RESERVED.has(n);
+const nameError = n => RESERVED.has(n)
+  ? `\`${n}\` is a JavaScript keyword — pick another name` : `\`${n}\` is not a name`;
 
 const isState = (c, n) => c.state.some(s => s.name === n);
 const setter = n => 'set' + n[0].toUpperCase() + n.slice(1);
@@ -48,8 +72,16 @@ function lineNode(t) {
   const head = t[0];
   const hk = HOOK.exec(head);
   if (hk) return hookNode(hk[1], hk[2], t.slice(1));
-  if (head === 'C') return { kind: 'comp', name: t[1], parts: t.slice(2) };
-  if (head === 'S') return { kind: 'store', name: t[1], parts: t.slice(2) };
+  // A block's name becomes a React component (or a provider), and React reads a lower-case tag
+  // as a DOM element: `C card` would render `<card>` and never call the function.
+  if (head === 'C' || head === 'S') {
+    const name = t[1];
+    if (!name || !CAPITAL.test(name)) {
+      throw new Error(`${head} ${name ?? ''}`.trim()
+        + `: a block's name has to start with a capital letter and be a name`);
+    }
+    return { kind: head === 'C' ? 'comp' : 'store', name, parts: t.slice(2) };
+  }
   if (head === 'A') return { kind: 'app', name: t[1] };
   // `i X ./X` · `i {a,b} from pkg` · `i pkg/x.css` — but `i "text"` / `i c="em"` is the <i> element
   if (head === 'i' && t.length > 1 && !t[1].startsWith('"') && !t[1].includes('=')) {
@@ -69,12 +101,15 @@ function lineNode(t) {
     const rest = t.slice(head.slice(1) ? 1 : 2);
     const asI = rest.indexOf('as');
     const key = rest.find(x => x.startsWith('k='));
-    return { kind: 'map', list, item: asI >= 0 ? rest[asI + 1] : 'it', key: key ? key.slice(2) : null };
+    const item = asI >= 0 ? rest[asI + 1] : 'it';
+    // `*xs as x` binds the item: a destructuring pattern is fine, a keyword is not.
+    if (!/^[[{]/.test(item) && !isName(item)) throw new Error(`* … as ${nameError(item)}`);
+    return { kind: 'map', list, item, key: key ? key.slice(2) : null };
   }
   if (head.startsWith('"')) return { kind: 'text', value: head.slice(1, -1) };
   if (head.startsWith('{') && head.endsWith('}')) return { kind: 'expr', code: head.slice(1, -1) };
   if (head === 'slot') {                            // markup passed as a prop, not as a child
-    if (!/^[a-zA-Z_$][\w$]*$/.test(t[1] || '')) throw new Error('slot: expected `slot <propName>`');
+    if (!IDENT.test(t[1] || '')) throw new Error('slot: expected `slot <propName>`');
     return { kind: 'slot', name: t[1] };
   }
   if (head.startsWith('%')) {                       // %btn.primary -> kit entry `btn` + its tag
@@ -85,7 +120,7 @@ function lineNode(t) {
 }
 
 // What can begin an attribute: a quoted text node, a spread, an event, or `name`/`name=value`.
-const ATTR_START = /^(?:\.\.\.|@|")|^[A-Za-z_$][\w$:.-]*(?:=|$)/;
+const ATTR_START = /^(?:\.\.\.|@|")|^[\p{L}_$][\p{L}\p{N}_$:.-]*(?:=|$)/u;
 
 // Is this attribute still mid-expression — an open bracket or quote, or a trailing operator?
 const incomplete = s => {
@@ -116,10 +151,10 @@ function attrList(t) {
 function selector(s) {
   // A dash can only be a custom element (`my-widget`): no component or DOM tag has one, and a
   // class is always introduced by its own `.`.
-  const m = /^([A-Za-z][\w$]*(?:-[\w$]+)*)?((?:[.#][\w$-]+)*)$/.exec(s);
+  const m = /^(\p{L}[\p{L}\p{N}_$]*(?:-[\p{L}\p{N}_$]+)*)?((?:[.#][\p{L}\p{N}_$-]+)*)$/u.exec(s);
   if (!m) throw new Error(`bad selector: ${s}`);
   const classes = [], ids = [];
-  for (const part of (m[2] || '').match(/[.#][\w$-]+/g) || []) {
+  for (const part of (m[2] || '').match(/[.#][\p{L}\p{N}_$-]+/gu) || []) {
     (part[0] === '.' ? classes : ids).push(part.slice(1));
   }
   return { tag: m[1] || 'div', classes, id: ids[0] || null };
@@ -130,7 +165,7 @@ function selector(s) {
 // can tell the two apart: `div.card` and `motion.div` are the same shape. Case decides the rest,
 // the way it decides everywhere else in Zaal: `Card.wide` is still a class on <Card>, because a
 // class is lower-case and a component is not.
-const isMember = (tag, next) => /^[a-z]/.test(tag) || /^[A-Z]/.test(next);
+const isMember = (tag, next) => /^\p{Ll}/u.test(tag) || /^\p{Lu}/u.test(next);
 
 function memberTags(node, scope) {
   if (node.kind === 'el' && node.classes?.length && scope.has(node.tag)
@@ -138,7 +173,7 @@ function memberTags(node, scope) {
     // The member is the segment after the base, plus any further capitalized ones
     // (`Dialog.Panel.Title`). What follows is classes again: `motion.div.sheet`.
     const path = [node.tag, node.classes.shift()];
-    while (node.classes.length && /^[A-Z]/.test(node.classes[0])) path.push(node.classes.shift());
+    while (node.classes.length && /^\p{Lu}/u.test(node.classes[0])) path.push(node.classes.shift());
     node.tag = path.join('.');
   }
   for (const k of node.kids || []) memberTags(k, scope);
@@ -148,15 +183,20 @@ function hookNode(hook, mod, rest) {
   const deps = !mod ? 'auto' : mod === '!' ? [] : mod === '*' ? null : tokens(mod.slice(1, -1).replace(/,/g, ' '));
   const src = rest.join(' ');
   if (hook === 'fx') {
-    if (/^[\w$]+$/.test(src)) throw new Error(`fx: \`fx ${src}\` is not a dep list — write \`fx[${src}]\``);
+    if (IDENT.test(src)) throw new Error(`fx: \`fx ${src}\` is not a dep list — write \`fx[${src}]\``);
     return { kind: 'hook', hook, deps, body: src };
+  }
+  // Only the hooks that *have* a dependency array can carry a suffix: `ref! box` and
+  // `use[a] x = …` read as if they pinned something, and silently pinned nothing.
+  if (mod && (hook === 'ref' || hook === 'ctx' || hook === 'use')) {
+    throw new Error(`${hook}${mod}: \`${hook}\` has no dependencies — the suffix belongs on fx, memo or cb`);
   }
   const [lhs, rhs] = splitAssign(src);
   // `ref`, `memo`, `cb` and `ctx` all declare one binding, so the name has to be an identifier —
   // without this `cb 1bad() = …` only surfaces as a syntax error in the generated module.
-  const ident = x => /^[A-Za-z_$][\w$]*$/.test(x);
+  const ident = isName;
   if (hook === 'ref') {
-    if (!ident(lhs)) throw new Error(`ref: bad name \`${lhs}\``);
+    if (!ident(lhs)) throw new Error(`ref: ${nameError(lhs)}`);
     return { kind: 'hook', hook, name: lhs, init: rhs || 'null' };
   }
   // `use useLayoutEffect(…)` — a hook that hands nothing back still has to run on every render,
@@ -167,11 +207,12 @@ function hookNode(hook, mod, rest) {
   }
   if (!rhs) throw new Error(`${hook}: expected \`${hook} <name> = <expr>\``);
   if (hook === 'cb') {
-    const m = /^([A-Za-z_$][\w$]*)\s*(\([^)]*\))?$/.exec(lhs);
+    const m = new RegExp(`^(${ID})\\s*(\\([^)]*\\))?$`, 'u').exec(lhs);
     if (!m) throw new Error(`cb: bad name \`${lhs}\``);
+    if (!isName(m[1])) throw new Error(`cb: ${nameError(m[1])}`);
     return { kind: 'hook', hook, name: m[1], params: m[2] || '()', body: rhs, deps };
   }
-  if (hook !== 'use' && !ident(lhs)) throw new Error(`${hook}: bad name \`${lhs}\``);
+  if (hook !== 'use' && !ident(lhs)) throw new Error(`${hook}: ${nameError(lhs)}`);
   return { kind: 'hook', hook, name: lhs, expr: rhs, deps };
 }
 
@@ -190,4 +231,5 @@ function splitAssign(s) {
   return [s.trim(), ''];
 }
 
-export { parse, lineNode, attrList, selector, memberTags, hookNode, splitAssign, IDENT, setter, RAW_BODY, isState };
+export { parse, lineNode, attrList, selector, memberTags, hookNode, splitAssign, IDENT, ID, IDC, escRe, isName,
+  nameError, setter, RAW_BODY, isState };

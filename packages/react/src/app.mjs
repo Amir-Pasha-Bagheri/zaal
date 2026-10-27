@@ -1,132 +1,88 @@
-// The files that are the app rather than a part of it: the entry module that mounts it, the
-// hash router it ships with, and index.html.
-import { basename } from 'node:path';
-import { OUT_SRC, OUT_CSS } from 'zaal';
-import { storeOrder } from '@zaal/web';
-import { REACT_V } from './names.mjs';
+// app.zaal: the routes, the title, the design system, the package pins. An app declaration
+// says what the app *is*, not what it compiles to, so none of this is target-specific.
+import { parse, fail, splitSpec, CDN, SRC_DIR } from 'zaal';
 
-const router = target => `import { useState, useEffect, createElement } from 'react';
-
-// Minimal hash router: zero dependencies, patterns may contain :params.
-function match(pattern, path) {
-  const p = pattern.split('/').filter(Boolean), q = path.split('/').filter(Boolean);
-  if (p.length !== q.length) return null;
-  const params = {};
-  for (let i = 0; i < p.length; i++) {
-    if (p[i].startsWith(':')) params[p[i].slice(1)] = decodeURIComponent(q[i]);
-    else if (p[i] !== q[i]) return null;
+function parseApp(src) {
+  const node = parse(src).kids.find(n => n.kind === 'app');
+  if (!node) throw new Error('app file has no `A <Name>` block');
+  const app = { name: node.name, ln: node.ln, title: node.name, mount: 'root', ui: null, css: [], routes: [],
+    target: 'react',
+    pins: new Map(), cdn: CDN, storeOrder: [] };
+  for (const k of node.kids) {
+    if (k.kind === 'route') {
+      // A second route for one path never runs: the router takes the first that matches, so
+      // the later line is dead markup rather than an override.
+      if (!k.component) fail(k, `app: ${k.path} names no component — write \`${k.path} <Component>\``);
+      const twice = app.routes.find(r => r.path === k.path);
+      if (twice) {
+        fail(k, k.path === '/*'
+          ? `app: a second \`/*\` never runs — ${twice.component} is already the catch-all`
+          : `app: the route ${k.path} is declared twice — only ${twice.component} would ever render`);
+      }
+      app.routes.push({ path: k.path, component: k.component, lazy: k.lazy, ln: k.ln });
+      continue;
+    }
+    const [key, ...rest] = k.raw;
+    const val = rest.join(' ').replace(/^"|"$/g, '');
+    if (key === 't') app.title = val;
+    else if (key === 'm') {
+      // The id is written into an HTML attribute and into getElementById('…'): a quote in it
+      // would end one or the other.
+      app.mount = val.replace(/^#/, '');
+      if (!/^[A-Za-z][\w:.-]*$/.test(app.mount)) {
+        fail(k, `app: \`m ${val}\` is not an element id — letters, digits, \`-\`, \`_\`, \`:\` and \`.\``);
+      }
+    }
+    else if (key === 'ui') app.ui = val;
+    else if (key === 'css') app.css.push(val);
+    else if (key === 'store') app.storeOrder.push(...rest);
+    else if (key === 'pkg') {
+      const { pkg, version } = splitSpec(val);
+      const pinned = app.pins.get(pkg);
+      if (pinned && pinned !== version) {
+        fail(k, `app: ${pkg} is pinned twice, to ${pinned} and ${version} — keep one`);
+      }
+      app.pins.set(pkg, version);
+    }
+    else if (key === 'cdn') app.cdn = val.replace(/\/$/, '');
+    // `target react` — which target package compiles this app. The CLI reads it before any of
+    // this runs (it has to, to know whose parseApp to call), so here it only has to be legal.
+    else if (key === 'target') app.target = val;
+    else fail(k, `app: unknown directive \`${key}\``);
   }
-  return params;
+  return app;
 }
 
-export function useRoute() {
-  const read = () => window.location.hash.slice(1) || '/';
-  const [path, setPath] = useState(read);
-  useEffect(() => {
-    const on = () => setPath(read());
-    window.addEventListener('hashchange', on);
-    return () => window.removeEventListener('hashchange', on);
-  }, []);
-  return path;
-}
-
-// Navigate from code: go('/done')
-export const go = to => { window.location.hash = to; };
-
-export function Link({ to, children, ...rest }) {
-  const path = useRoute();
-  return createElement('a', { href: '#' + to, 'data-active': path === to || undefined, ...rest }, children);
-}
-
-export function Router({ routes, fallback }) {
-  const path = useRoute();
-  for (const r of routes) {
-    const params = match(r.path, path);
-    if (params) return createElement(r.component, params);
+// Providers listed in app.zaal (`store A B`) wrap outermost-first, the rest follow by name —
+// but a store that reads another needs that one's provider *outside* its own, or the hook
+// throws on the first render. That order is not a preference, so it is derived rather than
+// trusted: `deps` says which stores each store reads.
+function storeOrder(app, stores, deps = new Map()) {
+  const named = app.storeOrder.filter(n => stores.has(n));
+  for (const n of app.storeOrder) if (!stores.has(n)) fail(app.ln, `store ${n}: no \`S ${n}\` in ${SRC_DIR}/`);
+  // An explicit list that contradicts what the stores read is a mistake worth naming.
+  for (const n of named) {
+    for (const d of deps.get(n) || []) {
+      if (named.includes(d) && named.indexOf(d) > named.indexOf(n)) {
+        fail(app.ln, `store ${named.join(' ')}: ${n} reads ${d}, so ${d}'s provider has to be`
+          + ` outside it — write \`store ${d} ${n}\``);
+      }
+    }
   }
-  return fallback ?? createElement('p', null, 'Not found: ' + path);
-}
-`;
-
-function mainFile(app, target, stores = new Map(), paths = new Map()) {
-  const ext = target === 'jsx' ? '.jsx' : '.js';
-  const comps = [...new Set(app.routes.map(r => r.component))];
-  const routes = new Map(comps.map(c => [c, paths.get(c)?.file ?? c]));
-  // `/* NotFound` is the catch-all: not a pattern to match, but what the router renders when
-  // nothing matched, so it stays last however the routes are ordered.
-  const miss = app.routes.find(r => r.path === '/*')?.component ?? null;
-  const table_ = app.routes.filter(r => r.path !== '/*');
-  const order = storeOrder(app, stores);
-  // A `lazy` route is fetched on first visit instead of shipping inside the main bundle.
-  const split = new Set(app.routes.filter(r => r.lazy).map(r => r.component));
-  const imports = `import { createRoot } from 'react-dom/client';
-import { Router } from './router${ext}';
-${order.map(n => `import { ${n}Provider } from './${stores.get(n)}${ext}';`).join('\n')}
-${comps.filter(c => !split.has(c)).map(c => `import ${c} from './${routes.get(c)}${ext}';`).join('\n')}
-${[...split].map(c => `const ${c} = lazy(() => import('./${routes.get(c)}${ext}'));`).join('\n')}`
-    .replace(/\n{2,}/g, '\n').trim();
-  const table = `const routes = [\n${table_.map(r => `  { path: '${r.path}', component: ${r.component} },`).join('\n')}\n];`;
-  if (target === 'jsx') {
-    const wrap = [...order.map(n => [`<${n}Provider>`, `</${n}Provider>`]),
-      ...split.size ? [['<Suspense fallback={null}>', '</Suspense>']] : []];
-    const open = wrap.map(([o], i) => `${'  '.repeat(i + 2)}${o}`);
-    const close = wrap.map(([, c], i) => `${'  '.repeat(i + 2)}${c}`).reverse();
-    // (local stylesheets are linked by index.html — in both backends, so they load once)
-    const router_ = `<Router routes={routes}${miss ? ` fallback={<${miss} />}` : ''} />`;
-    return `import React${split.size ? ', { lazy, Suspense }' : ''} from 'react';\n${imports}\n
-${table}
-
-createRoot(document.getElementById('${app.mount}')).render(
-  <React.StrictMode>
-${[...open, `${'  '.repeat(wrap.length + 2)}${router_}`, ...close].join('\n')}
-  </React.StrictMode>
-);
-`;
-  }
-  const args = `{ routes${miss ? `, fallback: createElement(${miss})` : ''} }`;
-  const routed = split.size
-    ? `createElement(Suspense, { fallback: null }, createElement(Router, ${args}))`
-    : `createElement(Router, ${args})`;
-  const tree = order.reduceRight((inner, n) => `createElement(${n}Provider, null, ${inner})`, routed);
-  return `import { createElement, StrictMode${split.size ? ', lazy, Suspense' : ''} } from 'react';\n${imports}\n
-${table}
-
-createRoot(document.getElementById('${app.mount}')).render(
-  createElement(StrictMode, null, ${tree})
-);
-`;
+  const out = [], state = new Map();
+  const visit = (n, trail) => {
+    if (state.get(n) === 'done') return;
+    if (state.get(n) === 'open') {
+      fail(app.ln, `${trail.slice(trail.indexOf(n)).join(' and ')} read each other,`
+        + ` so neither provider can be the outer one`);
+    }
+    state.set(n, 'open');
+    for (const d of [...(deps.get(n) || [])].sort()) if (stores.has(d)) visit(d, [...trail, n]);
+    state.set(n, 'done');
+    out.push(n);
+  };
+  for (const n of [...named, ...[...stores.keys()].filter(x => !named.includes(x)).sort()]) visit(n, []);
+  return out;
 }
 
-// react, react-dom and whatever the `i` lines named — every bare specifier the modules use.
-function importMap(app, pkgs) {
-  const v = n => app.pins.get(n) || REACT_V;                     // `pkg react@19.2.0` moves the app
-  const react = `${app.cdn}/react@${v('react')}`, dom = `${app.cdn}/react-dom@${v('react-dom')}`;
-  const imports = { react, 'react/jsx-runtime': `${react}/jsx-runtime`,
-    'react-dom': dom, 'react-dom/client': `${dom}/client` };
-  for (const [id, p] of pkgs || []) if (!p.css) imports[id] = p.url;
-  return JSON.stringify({ imports }, null, 2).replace(/^/gm, '      ');
-}
-
-const html = (app, target, pkgs) => `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${app.title}</title>
-${[
-    ...[...(target === 'esm' ? [...pkgs || []].filter(([, p]) => p.css).map(([, p]) => p.url) : []),
-      app.ui && `${OUT_CSS}/ui.css`,
-      ...app.css.map(c => /^https?:/.test(c) ? c : `${OUT_CSS}/${basename(c)}`)].filter(Boolean)
-      .map(c => `    <link rel="stylesheet" href="${/^https?:/.test(c) ? c : './' + c}" />`),
-    // only the no-install preview resolves packages in the page; a bundler reads the imports
-    target === 'esm' && `    <script type="importmap">\n${importMap(app, pkgs)}\n    </script>`,
-  ].filter(Boolean).join('\n')}
-  </head>
-  <body>
-    <div id="${app.mount}"></div>
-    <script type="module" src="./${OUT_SRC}/main${target === 'jsx' ? '.jsx' : '.js'}"></script>
-  </body>
-</html>
-`;
-
-export { router, mainFile, importMap, html };
+export { parseApp, storeOrder };

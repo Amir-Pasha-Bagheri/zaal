@@ -187,3 +187,29 @@ test('a `//` inside a string or a URL is not a comment', () => {
   assert.match(jsx('C A\n  a href="https://x.dev" "https://x.dev // keep"\n'),
     /<a href="https:\/\/x\.dev">https:\/\/x\.dev \/\/ keep<\/a>/);
 });
+
+// Spacing inside a string is content, whatever quote it uses — the line splitter has to keep it.
+test('a single-quoted or template string keeps its spacing', () => {
+  assert.match(jsx("js const msg = 'hello  world'\nC A\n  p \"{msg}\"\n"), /'hello {2}world'/);
+  assert.match(jsx('C A\n  button @click=log(`a  b`) "x"\n'), /log\(`a {2}b`\)/);
+  assert.match(jsx('C A\n  p "it\'s  fine"\n'), /it's {2}fine/);
+});
+
+test('a comment still ends the line after an apostrophe', () => {
+  assert.match(jsx("js const x = 1 // don't\nC A\n  p \"y\"\n"), /const x = 1\n/);
+});
+
+// Identifiers are not ASCII-only in JavaScript, and neither are the names people choose.
+test('unicode names work, and the capital rule still holds', () => {
+  assert.match(jsx('C Café p:prénom\n  p "Bonjour {prénom}"\n'), /function Café\(\{ prénom \}\)/);
+  assert.match(jsx('C Привет\n  p "x"\n'), /function Привет\(\)/);
+  assert.match(jsx('C A s:zählung=0\n  button @click=zählung++ "{zählung}"\n'),
+    /const \[zählung, setZählung\] = useState\(0\)/);
+  assert.throws(() => jsx('C café\n  p "x"\n'), /has to start with a capital/);
+});
+
+test('CRLF, tabs and a BOM all parse', () => {
+  assert.match(jsx('C A p:n\r\n  div\r\n    p "{n}"\r\n'), /<div>\n\s*<p>\{n\}<\/p>\n\s*<\/div>/);
+  assert.match(jsx('C A p:n\n\tdiv\n\t\tp "{n}"\n'), /<div>\n\s*<p>\{n\}<\/p>\n\s*<\/div>/);
+  assert.match(jsx('﻿C A\n  p "x"\n'), /<p>x<\/p>/);
+});

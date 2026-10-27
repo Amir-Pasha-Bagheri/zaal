@@ -2,7 +2,7 @@
 // index.html and src/main.*.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseApp } from '../zaal.mjs';
+import { parseApp, html } from '../zaal.mjs';
 import { projectDir, buildIn, read, has, cleanup } from './helpers/fixture.mjs';
 import { after } from 'node:test';
 
@@ -194,4 +194,27 @@ test('the generated router exports what the app uses', () => {
 test('a missing app file names the layout instead of ENOENT', () => {
   const root = projectDir({ 'src/app.zaal': 'A Demo\n  / Home\n' });
   assert.throws(() => buildIn(root), /no zaal\/app\.zaal[\s\S]*rename src\/ to zaal\//);
+});
+
+// A second route for one path is dead: the router takes the first that matches.
+test('a repeated route, a missing component or a double pin is an error', () => {
+  assert.throws(() => parseApp('A X\n  / Home\n  / Other\n'),
+    /the route \/ is declared twice — only Home would ever render/);
+  assert.throws(() => parseApp('A X\n  /* A\n  /* B\n'), /a second `\/\*` never runs/);
+  assert.throws(() => parseApp('A X\n  /about\n'), /\/about names no component/);
+  assert.throws(() => parseApp('A X\n  pkg a@1.0.0\n  pkg a@2.0.0\n'),
+    /a is pinned twice, to 1.0.0 and 2.0.0/);
+  assert.doesNotThrow(() => parseApp('A X\n  pkg a@1.0.0\n  pkg a@1.0.0\n'), 'the same pin twice is fine');
+  assert.doesNotThrow(() => parseApp('A X\n  / Home\n  /h Home\n'), 'one component, two paths is fine');
+});
+
+// The title is author text that lands in markup, and the mount id lands in both an attribute
+// and `getElementById('…')`.
+test('the document title is escaped, and the mount id is checked', () => {
+  const app = parseApp('A X\n  t "Tom & Jerry </title><script>alert(1)</script>"\n  / Home\n');
+  const page = html(app, 'jsx', new Map());
+  assert.match(page, /<title>Tom &amp; Jerry &lt;\/title&gt;&lt;script&gt;alert\(1\)&lt;\/script&gt;<\/title>/);
+  assert.equal(page.match(/<\/title>/g).length, 1, 'the element still closes once');
+  assert.throws(() => parseApp("A X\n  m #root's\n  / Home\n"), /is not an element id/);
+  assert.doesNotThrow(() => parseApp('A X\n  m #app-root\n  / Home\n'));
 });

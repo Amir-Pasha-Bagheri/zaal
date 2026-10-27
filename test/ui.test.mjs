@@ -219,3 +219,35 @@ test('@keyframes steps are selectors of their own', () => {
 test('a kit entry declared only inside an at-rule is still a known class', () => {
   assert.ok(parseUI('D X\n@media print\n  k sheet\n    p 0\n').known.has('sheet'));
 });
+
+// Two silent losses: a recipe written twice (the first disappears) and a token nobody
+// declared (the rule compiles to a var() that resolves to nothing).
+test('a kit entry declared twice is an error', () => {
+  assert.throws(() => css('D X\nk card\n  p 1rem\nk card\n  m 1rem\n'),
+    /`k card` is declared twice/);
+  assert.doesNotThrow(() => css('D X\nk card\n  p 1rem\n  v card\n    m 1rem\n'),
+    'a variant may share the entry name');
+});
+
+test('a token no `t` group declares is a warning, wherever it is used', () => {
+  const warn = src => parseUI(src).warnings;
+  assert.deepEqual(warn('D X\nt color\n  a #1\nk card\n  bg $color.b\n  fg $color.a\n'),
+    ['ui: k card uses $color.b, which no `t` group declares']);
+  assert.deepEqual(warn('D X\nt color\n  a #1\nscheme dark\n  color.b #2\n'),
+    ['ui: scheme dark sets color.b, which no `t` group declares']);
+  assert.deepEqual(warn('D X\nt space\n  1 1px\nk card\n  v big\n    p $space.2\n'),
+    ['ui: k card uses $space.2, which no `t` group declares']);
+  assert.deepEqual(warn('D X\nt space\n  1 1px\n@media print\n  k card\n    p $space.9\n'),
+    ['ui: @media print uses $space.9, which no `t` group declares']);
+});
+
+test('tokens defined in terms of other tokens, and dashed names, are known', () => {
+  assert.deepEqual(parseUI('D X\nt color\n  a #1\n  b $color.a\nk card\n  bg $color.b\n').warnings, []);
+  assert.deepEqual(parseUI('D X\nt color\n  on-accent #1\nk card\n  fg $color.on-accent\n').warnings, []);
+});
+
+test('the example design system declares every token it uses', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../example/zaal/ui.zaal', import.meta.url), 'utf8');
+  assert.deepEqual(parseUI(src).warnings, []);
+});

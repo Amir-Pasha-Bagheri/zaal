@@ -71,8 +71,42 @@ function atBlock(n, ui) {
   return { query: [n.head, ...n.rest].join(' '), parts };
 }
 
+// Every `$group.name` a recipe uses, and every `group.name` a scheme overrides, has to be a
+// token some `t` group declared. Otherwise it compiles to a `var()` that resolves to nothing —
+// a silently unstyled rule, which no stylesheet will ever complain about.
+function checkTokens(ui) {
+  const have = new Set(ui.tokens.flatMap(t => t.vars.map(([n]) => `${t.group}.${n}`)));
+  const seen = new Set();
+  const used = v => [...String(v).matchAll(/\$([A-Za-z][\w-]*)\.([\w-]+)/g)].map(m => `${m[1]}.${m[2]}`);
+  const note = (ref, where) => {
+    if (have.has(ref) || seen.has(ref + where)) return;
+    seen.add(ref + where);
+    ui.warnings.push(`ui: ${where} uses $${ref}, which no \`t\` group declares`);
+  };
+  const body = (b, where) => {
+    for (const [, v] of b.decls || []) for (const ref of used(v)) note(ref, where);
+    for (const n of b.nested || []) body(n, where);
+    for (const a of b.at || []) body(a, where);
+    for (const v of b.variants || []) body(v, where);
+  };
+  for (const t of ui.tokens) for (const [, v] of t.vars) for (const ref of used(v)) note(ref, `t ${t.group}`);
+  for (const e of ui.elements) body(e, `e ${e.sel}`);
+  for (const k of Object.values(ui.kit)) body(k, `k ${k.name}`);
+  for (const a of ui.at || []) for (const part of a.parts) body(part.body, a.query);
+  for (const sc of ui.schemes) {
+    for (const [n, v] of sc.vars) {
+      const ref = n.replace('-', '.');
+      if (!have.has(ref)) {
+        ui.warnings.push(`ui: scheme ${sc.name} sets ${ref}, which no \`t\` group declares`);
+      }
+      for (const r of used(v)) note(r, `scheme ${sc.name}`);
+    }
+  }
+}
+
 function parseUI(src) {
-  const ui = { name: null, tokens: [], schemes: [], elements: [], kit: {}, at: [], raw: [], known: new Set() };
+  const ui = { name: null, tokens: [], schemes: [], elements: [], kit: {}, at: [], raw: [],
+    known: new Set(), warnings: [] };
   for (const n of outline(src).kids) {
     if (n.head === 'D') { ui.name = n.rest[0] ?? 'design'; continue; }
     if (n.head === 't') {
@@ -84,13 +118,19 @@ function parseUI(src) {
       continue;
     }
     if (n.head === 'e') { ui.elements.push({ sel: n.rest.join(' '), ...recipe(n) }); continue; }
-    if (n.head === 'k') { const k = kitEntry(n, ui); ui.kit[k.name] = k; continue; }
+    if (n.head === 'k') {
+      const k = kitEntry(n, ui);
+      if (ui.kit[k.name]) fail(n, `ui: \`k ${k.name}\` is declared twice — the first recipe would be lost`);
+      ui.kit[k.name] = k;
+      continue;
+    }
     // `@media …`, `@supports …`, `@keyframes …` — a block of whole rules, not of declarations.
     if (n.head.startsWith('@')) { ui.at.push(atBlock(n, ui)); continue; }
     if (n.head === 'css') { ui.raw.push([n.head, ...n.rest].join(' ').slice(4)); continue; }
     fail(n, `ui: unknown directive \`${n.head}\``);
   }
   for (const e of ui.elements) for (const c of e.sel.match(/\.[\w-]+/g) || []) ui.known.add(c.slice(1));
+  checkTokens(ui);
   return ui;
 }
 

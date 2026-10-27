@@ -1,6 +1,6 @@
 // `S Name` -> a context, a provider and a use<Name>() hook.
-import { fail, IDENT, setter } from 'zaal';
-import { hookCode, lineText } from './component.mjs';
+import { fail, isName, nameError, setter } from 'zaal';
+import { hookCode, lineText, taken, setterClash, uniqueNames, laterNames } from './component.mjs';
 import { EL } from './markup.mjs';
 
 // A store is a component with no markup: its state and hooks become the context value, so
@@ -9,7 +9,14 @@ function store(node, target, opts = {}) {
   const codes = node.kids.map(lineText).join(' ');
   const persist = node.parts.find(p => p === 'persist' || p.startsWith('persist='));
   const key = persist?.includes('=') ? persist.slice(8) : `zaal:${node.name.toLowerCase()}`;
-  const ctx = { props: [], state: [], globals: new Set(), needs: new Set(), stores: opts.stores || new Map() };
+  // `persist=my:key` is a localStorage key, and the line splitter would have swallowed the
+  // rest of the line into a key holding a quote or a space.
+  if (!/^[\w:.\-/]+$/.test(key)) {
+    fail(node, `S ${node.name}: \`persist=${key}\` is not a storage key`
+      + ` — letters, digits, \`:\`, \`.\`, \`-\`, \`_\` and \`/\``);
+  }
+  const ctx = { props: [], state: [], globals: new Set(), needs: new Set(),
+    scope: new Set(opts.scope || []), stores: opts.stores || new Map() };
   for (const p of node.parts) {
     if (!p.startsWith('s:')) {
       if (p !== 'persist' && !p.startsWith('persist=')) {
@@ -18,16 +25,25 @@ function store(node, target, opts = {}) {
       continue;
     }
     const [name, ...v] = p.slice(2).split('=');
-    if (!IDENT.test(name)) fail(node, `${p}: \`${name}\` is not a name`);
+    if (!isName(name)) fail(node, `${p}: ${nameError(name)}`);
     ctx.state.push({ name, init: v.join('=') || 'null' });
   }
+  // The provider writes these itself: `value` is the context object, `children` is what it
+  // wraps, and a persisted store also holds `KEY` and `saved`.
+  const own = { value: 'the context object the provider builds', children: 'what the provider wraps',
+    ...persist ? { KEY: 'the localStorage key', saved: 'what was read back from localStorage' } : {} };
+  taken(node, ctx.state.map(st => st.name), own);
+  uniqueNames(node, [], ctx.state);
+  setterClash(node, ctx.state);
   const lines = ctx.state.map(st =>
     `  const [${st.name}, ${setter(st.name)}] = useState(${persist ? `saved.${st.name} ?? ${st.init}` : st.init});`);
   const reactive = new Set(ctx.state.map(st => st.name)), declared = [];
-  for (const k of node.kids) {
+  const below = laterNames(node.kids);
+  for (const [i, k] of node.kids.entries()) {
     if (k.kind !== 'hook' && k.kind !== 'js') fail(k, `S ${node.name}: a store has no markup`);
-    lines.push(...hookCode(ctx, k, reactive, declared));
+    lines.push(...hookCode(ctx, k, reactive, declared, below(i)));
   }
+  taken(node, declared, own);
   if (persist) {
     const names = ctx.state.map(st => st.name);
     lines.push(`  useEffect(() => {`,

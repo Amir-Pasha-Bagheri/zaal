@@ -1,31 +1,68 @@
 // `C Name` -> a function component, its hooks and (with `catch`) the one class React still
 // needs for an error boundary.
-import { fail, here, IDENT, setter, interp, stmts, fnBody, splitStmts, isRel, splitSpec,
-  rel } from 'zaal';
+import { fail, here, isName, nameError, setter, interp, stmts, fnBody, splitStmts, isRel, splitSpec,
+  rel, ID, IDC, escRe } from 'zaal';
 import { jsxNode, esmNode } from './markup.mjs';
+
+// Names the generated module writes for itself. A source name that lands on one of them is a
+// second `const` of that name — a syntax error in a file the author never wrote, so it is
+// reported here, against the line that chose the name.
+function taken(node, names, reserved) {
+  for (const n of names) {
+    if (reserved[n]) fail(node, `\`${n}\` is ${reserved[n]} — pick another name`);
+  }
+}
+
+// One name, declared twice on the same block: `p:a p:a` is a duplicate binding in the
+// parameter list, and `p:n` beside `s:n=0` redeclares `n` inside the body. Both are syntax
+// errors in the generated module.
+function uniqueNames(node, props, state) {
+  const seen = new Map();
+  for (const [kind, list] of [['p', props], ['s', state]]) {
+    for (const { name } of list) {
+      if (seen.has(name)) fail(node, `${seen.get(name)}:${name} and ${kind}:${name} are the same name`);
+      seen.set(name, kind);
+    }
+  }
+}
+
+// Two states whose setters collide (`s:n` beside `s:N` both want `setN`).
+function setterClash(node, state, props = []) {
+  const seen = new Map();
+  for (const st of state) {
+    const fn = setter(st.name);
+    if (seen.has(fn)) fail(node, `s:${st.name} and s:${seen.get(fn)} both need \`${fn}\``);
+    seen.set(fn, st.name);
+    const p = props.find(x => x.name === fn);
+    if (p) fail(node, `p:${fn} is also the setter that s:${st.name} needs — pick another name`);
+  }
+}
 
 function component(node, target, opts = {}) {
   const ctx = { props: [], state: [], globals: new Set(), needs: new Set(), spread: new Map(),
-    stores: opts.stores || new Map() };
+    scope: new Set(opts.scope || []), stores: opts.stores || new Map() };
   for (const p of node.parts) {
     if (p.startsWith('p:')) {
       const [name, ...d] = p.slice(2).split('=');
-      if (!IDENT.test(name)) fail(node, `${p}: \`${name}\` is not a name`);
+      if (!isName(name)) fail(node, `${p}: ${nameError(name)}`);
       ctx.props.push({ name, def: d.join('=') || null });
     } else if (p.startsWith('s:')) {
       const [name, ...v] = p.slice(2).split('=');
-      if (!IDENT.test(name)) fail(node, `${p}: \`${name}\` is not a name`);
+      if (!isName(name)) fail(node, `${p}: ${nameError(name)}`);
       ctx.state.push({ name, init: v.join('=') || 'null' });
     } else if (p !== 'memo' && !p.startsWith('memo=')) {
       fail(node, `C ${node.name}: unknown \`${p}\` — a \`C\` line takes p:, s:, memo and catch`);
     }
   }
+  uniqueNames(node, ctx.props, ctx.state);
+  setterClash(node, ctx.state, ctx.props);
   // Hook and `js` lines become the component body, in source order; the rest is markup.
   const lines = ctx.state.map(s => `  const [${s.name}, ${setter(s.name)}] = useState(${s.init});`);
   const markup = [], declared = [];
   const reactive = new Set([...ctx.props.map(p => p.name), ...ctx.state.map(s => s.name)]);
-  for (const k of node.kids) {
-    if (k.kind === 'hook' || k.kind === 'js') lines.push(...hookCode(ctx, k, reactive, declared));
+  const below = laterNames(node.kids);
+  for (const [i, k] of node.kids.entries()) {
+    if (k.kind === 'hook' || k.kind === 'js') lines.push(...hookCode(ctx, k, reactive, declared, below(i)));
     else markup.push(k);
   }
   // Several root elements are a fragment — never two sibling expressions.
@@ -120,7 +157,7 @@ function depsOf(deps, code, reactive) {
   if (deps === null) return '';                                        // `*` — no array, every render
   const names = deps === 'auto'
     // the name, not a property of something else (`x.n`) — but `...n` spreads it, so it counts
-    ? [...reactive].filter(n => new RegExp(`(?<![\\w$])(?<!(?<!\\.\\.)\\.)${n}(?![\\w$])`).test(code))
+    ? [...reactive].filter(n => new RegExp(`(?<!${IDC})(?<!(?<!\\.\\.)\\.)${escRe(n)}(?!${IDC})`, 'u').test(code))
     : deps;
   return `, [${names.join(', ')}]`;
 }
@@ -144,14 +181,57 @@ function bindNames(pattern) {
   const body = pattern.replace(/^[{[]/, '').replace(/[}\]]$/, '');
   const out = [];
   for (const seg of splitStmts(body.replace(/,/g, ';'))) {
-    const m = /^(?:\.\.\.)?(?:[\w$]+\s*:\s*)?([A-Za-z_$][\w$]*)/.exec(seg.trim());
+    const m = new RegExp(`^(?:\\.\\.\\.)?(?:${ID}\\s*:\\s*)?(${ID})`, 'u').exec(seg.trim());
     if (m) out.push(m[1]);
   }
   return out;
 }
 
-function hookCode(ctx, n, reactive, declared = []) {
+// `memo o = { a, b }` — an arrow whose body starts with `{` reads as a block, so the object
+// has to be parenthesised. (`fnBody` wraps several statements in a block on purpose.)
+const arrowBody = code => /^\{/.test(code.trim()) ? `(${code.trim()})` : code;
+
+// The hook names declared after position i — what a body at i is not allowed to reach for.
+// A `use` line's name may be a whole pattern (`[pending, start]`), so it contributes each of
+// the names it binds.
+function laterNames(kids) {
+  const names = kids.map(k => (k.kind === 'hook' && k.name
+    ? (/^[[{]/.test(k.name) ? bindNames(k.name) : [k.name]) : []));
+  return i => names.slice(i + 1).flat();
+}
+
+// `memo`, `use`, `ctx` and a `ref` initial value are evaluated while the component renders, so
+// naming something declared further down is a ReferenceError on the first paint — the generated
+// `const` is still in its temporal dead zone. (An `fx` or `cb` body runs later, so it is legal,
+// though its dependency array cannot see the name either.)
+function notYet(n, code, later) {
+  for (const name of later) {
+    if (new RegExp(`(?<!(?:${IDC}|\\.))${escRe(name)}(?!${IDC})`, 'u').test(code)) {
+      fail(n, `${name} is declared below this line, so \`${n.hook}\` would read it before it`
+        + ` exists — move this line under ${name}`);
+    }
+  }
+}
+
+// `fx[zzz]` with nothing called zzz in the component emits `}, [zzz])`, which is a
+// ReferenceError the moment the component mounts.
+function checkDeps(ctx, n, reactive, declared) {
+  if (!Array.isArray(n.deps)) return;
+  for (const d of n.deps) {
+    const base = d.split(/[.?[(]/)[0];
+    const known = reactive.has(base) || declared.includes(base) || ctx.scope?.has(base)
+      || ctx.props.some(p => p.name === base)
+      || ctx.state.some(st => st.name === base || setter(st.name) === base);
+    if (!known) {
+      fail(n, `${n.hook}[${n.deps.join(' ')}]: ${base} is not a prop, a state, or a value`
+        + ` this component declares`);
+    }
+  }
+}
+
+function hookCode(ctx, n, reactive, declared = [], later = []) {
   here(n);
+  checkDeps(ctx, n, reactive, declared);
   // Two declarations of one name are a syntax error in the generated module, which is a long
   // way from the line that caused it — `cb setX()` beside `s:x` is the easy mistake.
   const claim = name => {
@@ -164,13 +244,18 @@ function hookCode(ctx, n, reactive, declared = []) {
   };
   const bind = name => { claim(name); declared.push(name); reactive.add(name); };
   if (n.kind === 'js') return ['  ' + [n.code, ...n.kids.map(lineText)].join(' ')];
-  if (n.hook === 'ref') { declared.push(claim(n.name)); return [`  const ${n.name} = useRef(${interp(n.init)});`]; }
-  if (n.hook === 'ctx') { bind(n.name); return [`  const ${n.name} = useContext(${n.expr});`]; }
+  if (n.hook === 'ref') {
+    notYet(n, n.init, later);
+    declared.push(claim(n.name));
+    return [`  const ${n.name} = useRef(${interp(n.init)});`];
+  }
+  if (n.hook === 'ctx') { notYet(n, n.expr, later); bind(n.name); return [`  const ${n.name} = useContext(${n.expr});`]; }
   if (n.hook === 'use') {
+    notYet(n, n.expr, later);
     if (!n.name) return [`  ${interp(n.expr)};`];      // `use useLayoutEffect(…)` — binds nothing
     const ids = bindNames(n.name);
     // `use { items, add } = Cart` — a bare store name reads that store, imported for you.
-    if (/^[A-Z][\w$]*$/.test(n.expr)) {
+    if (/^\p{Lu}[\p{L}\p{N}_$]*$/u.test(n.expr)) {
       if (!ctx.stores.has(n.expr)) fail(n, `use …= ${n.expr}: no store \`S ${n.expr}\` in this app`);
       ctx.needs.add(n.expr);
       for (const id of ids) { bind(id); ctx.globals.add(id); }
@@ -183,16 +268,18 @@ function hookCode(ctx, n, reactive, declared = []) {
   }
   if (n.hook === 'memo') {
     noHooks(n, n.expr);
+    notYet(n, n.expr, later);
     const code = interp(n.expr), deps = depsOf(n.deps, code, reactive);
     bind(n.name);
-    return [`  const ${n.name} = useMemo(() => ${code}${deps});`];
+    return [`  const ${n.name} = useMemo(() => ${arrowBody(code)}${deps});`];
   }
   if (n.hook === 'cb') {
     const { body, cleanup } = fxParts(ctx, n);
     noHooks(n, [...body, ...cleanup].join('; '));
     const deps = depsOf(n.deps, [...body, ...cleanup].join('; '), reactive);
     bind(n.name);
-    return [`  const ${n.name} = useCallback(${n.params} => ${fnBody(body)}${deps});`];
+    const one = body.length === 1 ? arrowBody(body[0]) : null;
+    return [`  const ${n.name} = useCallback(${n.params} => ${one ?? fnBody(body)}${deps});`];
   }
   const { body, cleanup } = fxParts(ctx, n);
   if (!body.length && !cleanup.length) fail(n, 'fx: empty effect body');
@@ -203,6 +290,9 @@ function hookCode(ctx, n, reactive, declared = []) {
     ...(cleanup.length ? [`    return () => ${fnBody(cleanup)};`] : []),
     `  }${deps});`];
 }
+
+const BOUNDARY_OWN = { error: 'the error the boundary caught', reset: 'the boundary\'s own reset',
+  children: 'what the boundary wraps' };
 
 // An error boundary is the one thing React still needs a class for — no hook catches a render
 // error. `C Oops catch` generates that class: the children render while nothing has thrown, and
@@ -216,12 +306,14 @@ function boundary(node, target, opts = {}) {
       + ` has no \`s:\` state — keep state in a child component`);
     if (p.startsWith('p:')) {
       const [name, ...d] = p.slice(2).split('=');
-      if (!IDENT.test(name)) fail(node, `${p}: \`${name}\` is not a name`);
+      if (!isName(name)) fail(node, `${p}: ${nameError(name)}`);
+      taken(node, [name], BOUNDARY_OWN);
       ctx.props.push({ name, def: d.join('=') || null });
       continue;
     }
     fail(node, `C ${node.name} catch: unknown \`${p}\` — a boundary takes p: props only`);
   }
+  uniqueNames(node, ctx.props, []);
   for (const k of node.kids) {
     if (k.kind === 'hook' || k.kind === 'js') fail(k, `C ${node.name} catch: an error boundary is a`
       + ` class, so it has no hooks — keep them in a child component`);
@@ -246,4 +338,5 @@ function boundary(node, target, opts = {}) {
       `}`].join('\n') };
 }
 
-export { component, boundary, hookCode, exportKeyword, codeOf, lineText, interpOf, reactNames };
+export { component, boundary, hookCode, exportKeyword, codeOf, lineText, interpOf, reactNames,
+  taken, setterClash, uniqueNames, laterNames };

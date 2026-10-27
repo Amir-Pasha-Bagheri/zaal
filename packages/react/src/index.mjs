@@ -5,9 +5,13 @@
 // file of the output. @zaal/core's `build` asks it those questions and never names React.
 import { APP_DIR, DEV_DIR, build as coreBuild, watchAndServe as coreWatch,
   project as coreProject } from 'zaal';
-import { parseApp, parseUI, uiCss } from '@zaal/web';
+// The web layer: a design system compiled to CSS, and what an app declaration is. Not React's,
+// strictly — any web target needs both — so they are their own modules, ready to move out into
+// a shared package the day a second web target (Vue, Angular) actually exists.
+import { parseApp } from './app.mjs';
+import { parseUI, uiCss } from './ui.mjs';
 import { compile } from './compile.mjs';
-import { router, mainFile, html } from './app.mjs';
+import { router, mainFile, html } from './entry.mjs';
 import { scaffold } from './imports.mjs';
 
 const react = {
@@ -47,3 +51,5 @@ const project = (opts = {}) => coreProject({ ...opts, parseApp, parseUI });
 
 export default react;
 export { react, build, watchAndServe, project, compile, router, mainFile, html, scaffold };
+export { parseApp, storeOrder } from './app.mjs';
+export { parseUI, uiCss, PROP, tokenRef } from './ui.mjs';

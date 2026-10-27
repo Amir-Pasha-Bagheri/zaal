@@ -5,7 +5,7 @@
 GitHub and npm are separate namespaces, and the name landed differently in each:
 
 - **GitHub:** `github.com/zaal` is taken, so the repo sits under a personal account —
-  `github.com/YOUR-USERNAME/zaal`. Its own `README.md` is the landing page; no organization and
+  `github.com/Amir-Pasha-Bagheri/zaal`. Its own `README.md` is the landing page; no organization and
   no `.github` repo are involved. (`zaal-lang` is free if an org is ever wanted, and a repo can
   be transferred to one later — GitHub redirects the old URL automatically.)
 - **npm:** `zaal` is free as a bare name *and* `@zaal` is free as a scope, so both are used —
@@ -13,7 +13,7 @@ GitHub and npm are separate namespaces, and the name landed differently in each:
   the usual shape: `postcss` with `postcss-*` plugins, `eslint` with its plugins, `vite` with
   `@vitejs/*`.
 
-Every URL in the manifests and the READMEs says `YOUR-USERNAME` — replace it once the account
+Every URL in the manifests and the READMEs says `Amir-Pasha-Bagheri` — replace it once the account
 name is settled, or the npm pages will link nowhere.
 
 ## The names

@@ -6,7 +6,7 @@ agent has to be told about); a feature is worth adding when the Zaal form is mat
 than the React it replaces and needs no explanation. Anything that makes a `.zaal` file longer
 than the JSX it compiles to is the wrong answer.
 
-Status: SPEC.md is fully implemented (397 tests pass). Everything below is beyond the spec.
+Status: SPEC.md is fully implemented (497 tests pass). Everything below is beyond the spec.
 
 ## Part 1 — gaps (wrong or missing in what Zaal already claims) — **done**
 
@@ -62,6 +62,58 @@ Building a real app against the DSL (see `example/`) found four more, all fixed 
 Three fixes to the test harness came with them, so the suite can exercise what the example
 does: `fetch` (a canned PokéAPI) in `test/helpers/env.mjs`, lazy imports that actually resolve,
 and React's batching of several `setState` calls inside one event handler.
+
+## Part 1c — a test-first bug hunt — **done**
+
+Writing a third app (`test/board.test.mjs`, a kanban board) and probing the compiler's corners
+turned up another nineteen, all fixed with a regression test each (497 passing). Grouped:
+
+**Wrong output that ran**
+- [x] `@keyup`/`@dblclick`/`@mouseenter`/… became `onKeyup`, `onDblclick`, `onMouseenter` —
+  names React never attaches, so the handler was silently dead. Now a full DOM event table.
+- [x] A lone `?` rendered React's stray `0` (G10, earlier round).
+- [x] `memo o = { a, b }` emitted `useMemo(() => { a, b })` — an arrow body that starts with
+  `{` is a *block*. Now parenthesised.
+- [x] `$`-prefixed names (`p:$ref`) inferred **no** dependencies at all: the name went into a
+  RegExp unescaped, where `$` is an anchor. Names are escaped now.
+- [x] Unicode names (`s:zählung`) skipped the setter rewrite entirely, leaving an assignment to
+  a `const`. Every identifier pattern in the compiler is unicode-aware now.
+- [x] `<` and HTML entities in text were not escaped for JSX, so the two backends rendered
+  different strings (and `a < b` was a JSX syntax error).
+
+**Silent drops**
+- [x] Any attribute set twice (`%card c="wide"` → kit classes lost, `@click` twice, `id` twice).
+  Classes are now joined — static or dynamic — and any other repeat is an error.
+- [x] A `slot` filled twice, and a `key=` on an element the `*` line already keys.
+- [x] A kit entry declared twice in `ui.zaal` silently replaced the first.
+- [x] A `$token` or a `scheme` override naming a token no `t` group declares — now a warning.
+- [x] A second route for one path, a second `/*`, a package pinned twice.
+
+**Invalid JavaScript, reported far from the cause**
+- [x] `p:class`, `s:new`, `cb delete()`, `*xs as class` — JS keywords as names.
+- [x] `C card` / `S cart` — a lower-case block name renders as a DOM tag; `C 2Cool` is a
+  syntax error.
+- [x] Store state named `value`, `children`, `KEY` or `saved`; boundary props named `error`,
+  `reset` or `children`; `s:n` beside `s:N` (one `setN`); `p:setN` beside `s:n`.
+- [x] A name declared twice at module scope (`i A ./A` beside `C A`, two `i` lines, an `i`
+  line beside a `js const`).
+- [x] A render-time hook (`memo`, `use`, `ctx`, `ref`) naming a value declared below it —
+  a temporal-dead-zone crash on first paint.
+
+**Crashes and silent corruption**
+- [x] A `slot` at a component's root crashed with an internal TypeError.
+- [x] `'a  b'` and `` `a  b` `` lost their spacing in the line splitter.
+- [x] A `persist=` key holding a quote swallowed the rest of the line.
+- [x] The document title was not HTML-escaped (`Tom & Jerry`, `</title>`), and a mount id
+  with a quote broke `getElementById('…')`.
+- [x] A branch or a map with nothing under it (a child one indent short) rendered an empty
+  node instead of saying so.
+- [x] Editing state in place (`o.a = 1`, `xs.push(x)`) — nothing re-renders; now an error
+  naming the setter to call.
+
+Three more harness gaps closed so the suite can test what a real app does: unmounting between
+runs (a timer in an `fx` held the event loop open), resolving lazy imports, and the missing
+hooks (`useDebugValue`, `useImperativeHandle`, …).
 
 ## Part 2 — features (React surface Zaal cannot say)
 

@@ -2,6 +2,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { compile } from '../zaal.mjs';
+import { projectDir, buildIn, read, cleanup } from './helpers/fixture.mjs';
+import { after } from 'node:test';
+
+after(cleanup);
 
 const stores = new Map([['Todos', 'stores/Todos'], ['Theme', 'stores/Theme']]);
 const jsx = (src, opts = {}) => compile(src, 'jsx', { stores, ...opts });
@@ -148,4 +152,51 @@ test('a component may read the same store twice without clashing', () => {
   const out = jsx('C A\n  use { items } = Todos\n  use { left } = Todos\n  p "{items.length}{left}"\n');
   assert.equal((out.match(/useTodos\(\)/g) || []).length, 2);
   assert.equal((out.match(/import \{ useTodos \}/g) || []).length, 1);
+});
+
+// A store that reads another needs that one's provider outside its own, or the hook throws on
+// the first render. The order is derived from what the stores actually read, not trusted.
+const DEPS = {
+  'zaal/stores/Outer.zaal': 'S Outer s:a=1\n',
+  'zaal/stores/Inner.zaal': 'S Inner s:b=2\n  use { a } = Outer\n  memo both = a + b\n',
+  'zaal/pages/Home.zaal': 'C Home\n  use { both } = Inner\n  p "{both}"\n',
+};
+const order = app => {
+  const root = projectDir({ ...DEPS, 'zaal/app.zaal': app });
+  buildIn(root, 'jsx');
+  return read(root, 'application/src/main.jsx').match(/<\w+Provider>/g);
+};
+
+test('the provider that is read wraps the one that reads it', () => {
+  assert.deepEqual(order('A S\n  / Home\n'), ['<OuterProvider>', '<InnerProvider>'],
+    'with no store line at all');
+  assert.deepEqual(order('A S\n  store Inner\n  / Home\n'), ['<OuterProvider>', '<InnerProvider>'],
+    'and with a partial list that names only the dependent one');
+  assert.deepEqual(order('A S\n  store Outer Inner\n  / Home\n'), ['<OuterProvider>', '<InnerProvider>']);
+});
+
+test('a store line that contradicts what the stores read is an error', () => {
+  assert.throws(() => order('A S\n  store Inner Outer\n  / Home\n'),
+    /Inner reads Outer, so Outer's provider has to be outside it — write `store Outer Inner`/);
+});
+
+test('two stores that read each other cannot be nested at all', () => {
+  const root = projectDir({
+    'zaal/app.zaal': 'A S\n  / Home\n',
+    'zaal/pages/Home.zaal': 'C Home\n  p "x"\n',
+    'zaal/stores/A.zaal': 'S A s:x=1\n  use { y } = B\n',
+    'zaal/stores/B.zaal': 'S B s:y=1\n  use { x } = A\n',
+  });
+  assert.throws(() => buildIn(root, 'jsx'), /A and B read each other/);
+});
+
+test('two stores may not share one persist key', () => {
+  const root = projectDir({
+    'zaal/app.zaal': 'A S\n  / Home\n',
+    'zaal/pages/Home.zaal': 'C Home\n  use { x } = A\n  use { y } = B\n  p "{x}{y}"\n',
+    'zaal/stores/A.zaal': 'S A persist=shared s:x=1\n',
+    'zaal/stores/B.zaal': 'S B persist=shared s:y=2\n',
+  });
+  assert.match(buildIn(root, 'jsx').warnings.join('\n'),
+    /S A and S B both persist to `shared` — one would overwrite the other/);
 });

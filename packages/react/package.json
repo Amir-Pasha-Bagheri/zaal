@@ -1,7 +1,7 @@
 {
   "name": "@zaal/react",
   "version": "0.1.0",
-  "description": "The React target for Zaal: compiles .zaal sources to a standalone React app.",
+  "description": "The React target for Zaal: compiles .zaal sources to a standalone React app, with the ui.zaal design system and app.zaal project model every web target needs.",
   "keywords": [
     "zaal",
     "react",
@@ -19,8 +19,7 @@
     "README.md"
   ],
   "dependencies": {
-    "zaal": "^0.1.0",
-    "@zaal/web": "^0.1.0"
+    "zaal": "^0.1.0"
   },
   "publishConfig": {
     "access": "public"
@@ -30,9 +29,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YOUR-USERNAME/zaal.git",
+    "url": "git+https://github.com/Amir-Pasha-Bagheri/zaal.git",
     "directory": "packages/react"
   },
-  "homepage": "https://github.com/YOUR-USERNAME/zaal/tree/main/packages/react",
-  "bugs": "https://github.com/YOUR-USERNAME/zaal/issues"
+  "homepage": "https://github.com/Amir-Pasha-Bagheri/zaal/tree/main/packages/react",
+  "bugs": "https://github.com/Amir-Pasha-Bagheri/zaal/issues"
 }

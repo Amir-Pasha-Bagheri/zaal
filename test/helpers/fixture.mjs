@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { build, project } from '../../zaal.mjs';
 import { installEnv } from './env.mjs';
+import { reset } from './tiny-react.mjs';
 
 const roots = [];
 
@@ -24,7 +25,12 @@ export const has = (root, path) => existsSync(join(root, path));
 export const buildIn = (root, target = 'jsx') => build({ root, target });
 export const inspect = root => project({ root });
 
-export const cleanup = () => { for (const r of roots.splice(0)) rmSync(r, { recursive: true, force: true }); };
+// Unmount whatever the last `runProject` left running before deleting its directory: a
+// component that started a timer in an `fx` holds the event loop open until its cleanup runs.
+export const cleanup = () => {
+  reset();
+  for (const r of roots.splice(0)) rmSync(r, { recursive: true, force: true });
+};
 
 // Build the esm backend and run `src/main.js` against the tiny React: the generated app, live.
 export async function runProject(root, { hash = '#/', fetch } = {}) {

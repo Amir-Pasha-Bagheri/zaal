@@ -96,8 +96,21 @@ test('a hook name that is already taken is an error', () => {
 
 test('a non-identifier hook name is an error, not broken output', () => {
   throws('C A\n  cb 1bad() = log(1)\n  p "x"\n', /cb: bad name `1bad\(\)`/);
-  throws('C A\n  ref 2x\n  p "x"\n', /ref: bad name `2x`/);
-  throws('C A\n  memo 3y = 1\n  p "x"\n', /memo: bad name `3y`/);
+  throws('C A\n  ref 2x\n  p "x"\n', /ref: `2x` is not a name/);
+  throws('C A\n  memo 3y = 1\n  p "x"\n', /memo: `3y` is not a name/);
+});
+
+// A name also has to be legal where it lands: `function A({ class })` is a syntax error far
+// from the `p:class` that caused it.
+test('a JavaScript keyword is rejected wherever a name is declared', () => {
+  throws('C A p:class\n  p "x"\n', /`class` is a JavaScript keyword/);
+  throws('C A s:new=1\n  p "x"\n', /`new` is a JavaScript keyword/);
+  throws('S T s:for=1\n', /`for` is a JavaScript keyword/);
+  throws('C A catch p:default\n  p "x"\n', /`default` is a JavaScript keyword/);
+  throws('C A\n  cb delete() = 1\n  p "x"\n', /`delete` is a JavaScript keyword/);
+  throws('C A\n  ref void\n  p "x"\n', /`void` is a JavaScript keyword/);
+  throws('C A\n  memo this = 1\n  p "x"\n', /`this` is a JavaScript keyword/);
+  throws('C A p:xs\n  *xs as class\n    p "x"\n', /`class` is a JavaScript keyword/);
 });
 
 test('a bad selector is an error', () => {
@@ -130,4 +143,55 @@ test('a failed build writes nothing, so the last good output stays', async () =>
   assert.throws(() => buildIn(root), /<Nope> is not in scope/);
   assert.equal(readFileSync(join(root, 'application/src/Home.jsx'), 'utf8'), before);
   assert.ok(!has(root, 'application/src/Broken.jsx'));
+});
+
+// A block's name becomes a React component. React reads a lower-case tag as a DOM element, so
+// `C card` would quietly render `<card>` instead of calling the function.
+test('a block name has to be capitalized', () => {
+  throws('C card\n  p "x"\n', /C card: a block's name has to start with a capital/);
+  throws('S cart s:n=0\n', /S cart: a block's name has to start with a capital/);
+  throws('C 2Cool\n  p "x"\n', /a block's name has to start with a capital/);
+  throws('C\n  p "x"\n', /a block's name has to start with a capital/);
+});
+
+// Two declarations of one name at module scope is a syntax error in the generated file —
+// reported here, against the second line, with both sources named.
+test('a name may only be declared once in a file', () => {
+  throws('i A ./other/A\nC A\n  p "x"\n', /A is declared twice in this file — an `i` line and `C A`/);
+  throws('i Btn ./a/Btn\ni Btn ./b/Btn\nC A\n  Btn\n', /Btn is declared twice/);
+  throws('i x ./x\njs const x = 1\nC A\n  p "{x}"\n', /x is declared twice.*`js` line/);
+  throws('i useT ./useT\nS T s:n=0\n', /useT is declared twice in this file — an `i` line and `S T`/);
+});
+
+test('names that only look alike are fine', () => {
+  const ok = src => assert.doesNotThrow(() => compile(src, 'jsx'), src);
+  ok('i Btn ./Btn\nC A\n  Btn\n');
+  ok('i { a, b } from pkg\nC A\n  p "{a}{b}"\n');
+  ok('js const { a, b } = obj\nC A\n  p "{a}{b}"\n');
+  ok('i T ./T\nS Other s:n=0\n');
+});
+
+// A slot that is not directly under a component used to reach the element writer as a node
+// with no tag, and crash there with a TypeError instead of a diagnostic.
+test('a slot outside a component is reported, not a crash', () => {
+  throws('C A\n  slot head\n    p "x"\n', /a slot fills a prop on a component/);
+  throws('C A\n  div\n    slot head\n      p "x"\n', /<div> is not a component/);
+  assert.doesNotThrow(() => compile('i P ./P\nC A\n  P\n    slot head\n      p "x"\n', 'jsx'));
+});
+
+test('a persist key has to be a storage key', () => {
+  throws('S T persist=a"b s:n=0\n', /is not a storage key/);
+  assert.doesNotThrow(() => compile('S T persist=my:key s:n=0\n', 'jsx'));
+  assert.doesNotThrow(() => compile('S T persist s:n=0\n', 'jsx'));
+});
+
+// One name declared twice on a block: `p:a p:a` is a duplicate parameter binding, and
+// `p:n s:n=0` redeclares `n` in the body. Both are syntax errors in the generated module.
+test('a block may not declare one name twice', () => {
+  throws('C A p:a p:a=1\n  p "{a}"\n', /p:a and p:a are the same name/);
+  throws('C A p:n s:n=0\n  p "{n}"\n', /p:n and s:n are the same name/);
+  throws('C A s:n=0 s:n=1\n  p "{n}"\n', /s:n and s:n are the same name/);
+  throws('S T s:n=0 s:n=1\n', /s:n and s:n are the same name/);
+  throws('C O catch p:a p:a\n  p "x"\n', /p:a and p:a are the same name/);
+  assert.doesNotThrow(() => compile('C A p:a s:b=1\n  p "{a}{b}"\n', 'jsx'));
 });

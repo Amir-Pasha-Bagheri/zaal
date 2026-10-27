@@ -5,10 +5,17 @@
 // `"{mode == "dark" ? "a" : "b"}"` is one token.
 function tokens(line) {
   const out = [];
-  let buf = '', depth = 0, q = false, brace = 0, inner = false;
+  let buf = '', depth = 0, q = false, brace = 0, inner = false, plain = '';
   for (let i = 0; i < line.length; i++) {
     const c = line[i];
     const lit = line[i - 1] === '\\';
+    // `'…'` and `` `…` `` have no interpolation of their own, but their spacing is content:
+    // `log('a  b')` must keep both spaces.
+    if (plain) {
+      buf += c;
+      if (c === plain && !lit) plain = '';
+      continue;
+    }
     if (q) {
       buf += c;
       if (inner) { if (c === '"' && !lit) inner = false; continue; }
@@ -18,6 +25,7 @@ function tokens(line) {
       continue;
     }
     if (c === '"') { q = true; brace = 0; buf += c; continue; }
+    if (c === "'" || c === '`') { plain = c; buf += c; continue; }
     if ('([{'.includes(c)) depth++;
     if (')]}'.includes(c)) depth--;
     if (c === ' ' && depth === 0) { if (buf) out.push(buf); buf = ''; continue; }
