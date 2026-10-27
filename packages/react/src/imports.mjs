@@ -65,7 +65,11 @@ function scaffold(dir, app) {
   }, null, 2) + '\n');
   once('vite.config.js',
     `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\n`
-    + `export default defineConfig({ plugins: [react()] });\n`);
+    // `base: './'` keeps the built page relocatable: Vite's default writes absolute `/assets/…`
+    // URLs, which only work when the site is served from a domain root. The app routes on the
+    // hash, so a relative base costs nothing and `dist/` can be dropped anywhere — a project
+    // page, a subdirectory, even opened from disk.
+    + `export default defineConfig({ base: './', plugins: [react()] });\n`);
   once('.gitignore', 'node_modules/\ndist/\n');
   return made;
 }
