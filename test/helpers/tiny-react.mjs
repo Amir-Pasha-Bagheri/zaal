@@ -152,6 +152,53 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 
 const VOID = new Set(['input', 'br', 'hr', 'img', 'meta', 'link']);
 
+// React's DOM contract, as far as this harness can hold it: real React throws on a string
+// `style` and warns (then drops the attribute) for an HTML spelling like `tabindex` or an
+// event prop it does not know, such as `onKeyup`. A warning is invisible to a test, so here
+// they throw — the suite is the only place these ever surface.
+const REACT_EVENTS = new Set(['onClick', 'onDoubleClick', 'onAuxClick', 'onContextMenu',
+  'onMouseDown', 'onMouseUp', 'onMouseMove', 'onMouseEnter', 'onMouseLeave', 'onMouseOver',
+  'onMouseOut', 'onKeyDown', 'onKeyUp', 'onKeyPress', 'onFocus', 'onBlur', 'onInput',
+  'onChange', 'onSubmit', 'onReset', 'onInvalid', 'onSelect', 'onBeforeInput', 'onCopy',
+  'onCut', 'onPaste', 'onDrag', 'onDragStart', 'onDragEnd', 'onDragEnter', 'onDragLeave',
+  'onDragOver', 'onDrop', 'onTouchStart', 'onTouchMove', 'onTouchEnd', 'onTouchCancel',
+  'onPointerDown', 'onPointerUp', 'onPointerMove', 'onPointerEnter', 'onPointerLeave',
+  'onPointerCancel', 'onPointerOver', 'onPointerOut', 'onGotPointerCapture',
+  'onLostPointerCapture', 'onWheel', 'onScroll', 'onScrollEnd', 'onLoad', 'onError',
+  'onAbort', 'onToggle', 'onAnimationStart', 'onAnimationEnd', 'onAnimationIteration',
+  'onTransitionEnd', 'onPlay', 'onPlaying', 'onPause', 'onEnded', 'onTimeUpdate',
+  'onVolumeChange', 'onCanPlay', 'onCanPlayThrough', 'onDurationChange', 'onLoadedData',
+  'onLoadedMetadata', 'onLoadStart', 'onRateChange', 'onSeeked', 'onSeeking', 'onStalled',
+  'onSuspend', 'onWaiting', 'onProgress', 'onEmptied', 'onEncrypted', 'onResize',
+  'onCompositionStart', 'onCompositionEnd', 'onCompositionUpdate', 'onClose', 'onCancel']);
+
+// The camel spelling React wants, keyed by the HTML one people type instead.
+const HTML_SPELLING = {};
+for (const name of ['className', 'htmlFor', 'tabIndex', 'readOnly', 'maxLength', 'minLength',
+  'autoFocus', 'autoComplete', 'autoPlay', 'spellCheck', 'contentEditable', 'crossOrigin',
+  'dateTime', 'encType', 'formAction', 'inputMode', 'noValidate', 'srcSet', 'srcDoc',
+  'colSpan', 'rowSpan', 'useMap', 'accessKey', 'allowFullScreen', 'playsInline',
+  'referrerPolicy', 'charSet', 'httpEquiv', 'viewBox', 'preserveAspectRatio',
+]) HTML_SPELLING[name.toLowerCase()] = name;
+HTML_SPELLING.class = 'className';
+HTML_SPELLING.for = 'htmlFor';
+
+function strictDom(tag, props) {
+  if (tag.includes('-')) return;                        // a custom element takes anything
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'children' || k === 'key' || k === 'ref') continue;
+    if (k === 'style' && typeof v === 'string') {
+      throw new Error(`<${tag} style="…">: React wants an object, not a string`);
+    }
+    if (/^on[A-Z]/.test(k) && !REACT_EVENTS.has(k)) {
+      throw new Error(`<${tag} ${k}=…>: React has no such event — the handler would never run`);
+    }
+    if (HTML_SPELLING[k.toLowerCase()] && HTML_SPELLING[k.toLowerCase()] !== k) {
+      throw new Error(`<${tag} ${k}=…>: React spells it ${HTML_SPELLING[k.toLowerCase()]}`);
+    }
+  }
+}
+
 function attrs(props) {
   const out = [];
   for (const [k, v] of Object.entries(props)) {
@@ -183,6 +230,7 @@ function render(node, path) {
     return renderKids(props.children, key);
   }
   if (typeof type === 'string') {
+    strictDom(type, props);
     const el = { tag: type, props, text: '' };
     nodes.push(el);
     const inner = renderKids(props.children, key);

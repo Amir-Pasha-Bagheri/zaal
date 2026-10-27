@@ -1,0 +1,14 @@
+[
+  "C A p:a p:b=1 s:n=0\n  div.card#main c=\"x\" title=\"{a} items\"\n    p \"a & b <c> {n}\"\n",
+  "C A p:xs\n  ul\n    *xs as x k=x.id\n      li\n        ?x.on\n          b \"{x.t}\"\n        :\n          i \"{x.t}\"\n",
+  "i P ./P\nC A p:xs\n  P title=\"t\"\n    slot head\n      span \"h\"\n    *xs as x k=x\n      p \"{x}\"\n",
+  "C A s:q=\"\"\n  form @submit=go\n    input val=q @input=q=e.target.value ph=\"search\"\n    button type=\"submit\" disabled \"go\"\n",
+  "C Oops catch p:title=\"broke\"\n  section\n    h2 \"{title}\"\n    p \"{error.message}\"\n    button @click=reset \"retry\"\n",
+  "S T persist s:items=[]\n  memo n = items.length\n  cb add(x) = items=[...items,x]\n",
+  "C A p:style p:cls\n  div style=\"color: {style}; --x: 1px\" c=cls\n    svg viewbox=\"0 0 2 2\"\n      path d=\"M0 0\" strokewidth=2\n",
+  "js const Tag = \"em\"\nC A p:n\n  p\n    \"count:\"\n    \"{n} of 10\"\n",
+  "i { motion } from framer-motion\nC A\n  motion.div.sheet animate={opacity:1}\n    p \"x\"\n",
+  "C A p:rest\n  input ...rest tabindex=0 readonly\n",
+  "C A p:a\n  {a}\n",
+  "C A\n  my-widget.big text=\"x\"\n"
+]

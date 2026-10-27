@@ -12,7 +12,7 @@
   ],
   "type": "module",
   "bin": {
-    "zaal": "./bin/zaal"
+    "zaal": "bin/zaal"
   },
   "exports": {
     ".": "./src/index.mjs",

@@ -136,3 +136,27 @@ hooks (`useDebugValue`, `useImperativeHandle`, …).
   calls inside a promise chain (see `zaal/pages/Dex.zaal`): state assignment only rewrites at the
   top level of a statement. A `load` or `async` line that owns the loading/error/data triple
   would cut the most verbose thing in the example by half.
+
+## Part 1e — the oracles
+
+The bug hunts kept working because the suite had no way to *check* the output, only to compare
+it to itself. Three holes, two now closed:
+
+- [x] **The jsx backend's output was never parsed.** Every `--check` in the suite ran on the
+  esm preview; the deliverable was only ever diffed as text. `test/helpers/jsx-check.mjs` is a
+  structural check for the subset of JSX the compiler can get wrong — unbalanced brackets, a
+  name declared twice, a parameter bound twice, an attribute set twice, an unclosed element, a
+  bare `<` or an empty `{}` in children. It runs over the example, the checked-in deliverable,
+  every golden, and a corpus of awkward sources (`test/jsx-output.test.mjs`).
+- [x] **Nothing held React's DOM contract.** The test React rendered anything; real React
+  throws on a string `style` and warns-then-drops for `class`, `tabindex` or `onKeyup`. The
+  harness now refuses all of those, so the next such regression fails a test.
+- [ ] **No real parser, no real React.** Both of the above are approximations written here
+  because the sandbox has no network. One dev dependency (`esbuild` or `@babel/parser`) would
+  parse the jsx output properly, and `react-dom/server` with `console.error` treated as a
+  failure would make React itself the oracle. That pair would have caught about half of the
+  bugs in Part 1d without anyone looking for them. **Worth doing first, next time there is a
+  registry.**
+- [ ] **Differential testing.** Generate random valid sources, compile both backends, render
+  both, compare. The two backend divergences found so far (`&&` vs ternary, text spacing) were
+  both caught by reading, not by testing.
