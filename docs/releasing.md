@@ -79,11 +79,9 @@ Bumping versions together keeps the dependency ranges honest:
 npm version patch --workspaces --include-workspace-root
 ```
 
-Before the first publish, one thing is still open:
-
-- **A license.** No package carries a `license` field yet, so npm will warn and the code is
-  "all rights reserved" by default. Pick one (MIT is the usual choice for this kind of tool),
-  add a `LICENSE` file, and add `"license": "MIT"` to all four manifests.
+Both packages are MIT, declared in the manifests and carrying their own copy of `LICENSE` —
+npm only auto-includes a licence file sitting in the package's own directory, so a single one at
+the repo root would not have shipped in either tarball.
 
 `repository`, `homepage` and `bugs` are already set on all three packages, each pointing at its
 own directory, so every npm page links back to the right place.

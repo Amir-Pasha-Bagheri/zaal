@@ -2,15 +2,31 @@
   "name": "zaal",
   "version": "0.1.0",
   "description": "Zaal — a token-dense DSL that compiles to a runnable app. The language, the build pipeline and the `zaal` command, with no dependencies.",
-  "keywords": ["zaal", "dsl", "compiler", "codegen", "cli"],
+  "license": "MIT",
+  "keywords": [
+    "zaal",
+    "dsl",
+    "compiler",
+    "codegen",
+    "cli"
+  ],
   "type": "module",
-  "bin": { "zaal": "./bin/zaal" },
+  "bin": {
+    "zaal": "./bin/zaal"
+  },
   "exports": {
     ".": "./src/index.mjs",
     "./*": "./src/*"
   },
-  "files": ["src", "bin", "README.md"],
-  "engines": { "node": ">=20" },
+  "files": [
+    "src",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Amir-Pasha-Bagheri/zaal.git",

@@ -2,6 +2,7 @@
   "name": "@zaal/react",
   "version": "0.1.0",
   "description": "The React target for Zaal: compiles .zaal sources to a standalone React app, with the ui.zaal design system and app.zaal project model every web target needs.",
+  "license": "MIT",
   "keywords": [
     "zaal",
     "react",
@@ -16,7 +17,8 @@
   },
   "files": [
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "dependencies": {
     "zaal": "^0.1.0"

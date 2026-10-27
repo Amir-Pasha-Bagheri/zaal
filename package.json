@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Zaal — a token-dense DSL that compiles to a runnable app. This repo holds every package.",
+  "license": "MIT",
   "type": "module",
   "workspaces": [
     "packages/*"
