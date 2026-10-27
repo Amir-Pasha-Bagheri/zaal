@@ -2,7 +2,7 @@
   "name": "zaal",
   "version": "0.1.0",
   "description": "Zaal — a token-dense DSL that compiles to a runnable app. The language, the build pipeline and the `zaal` command, with no dependencies.",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": [
     "zaal",
     "dsl",
@@ -22,7 +22,8 @@
     "src",
     "bin",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "NOTICE"
   ],
   "engines": {
     "node": ">=20"

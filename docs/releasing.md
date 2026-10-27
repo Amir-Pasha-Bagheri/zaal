@@ -79,9 +79,15 @@ Bumping versions together keeps the dependency ranges honest:
 npm version patch --workspaces --include-workspace-root
 ```
 
-Both packages are MIT, declared in the manifests and carrying their own copy of `LICENSE` —
-npm only auto-includes a licence file sitting in the package's own directory, so a single one at
-the repo root would not have shipped in either tarball.
+Both packages are Apache-2.0, declared in the manifests. Apache was chosen over MIT for the
+explicit patent grant in section 3: it protects users from a contributor later asserting a
+patent against them, and the retaliation clause means anyone who sues over patents loses their
+licence. Same freedoms as MIT otherwise, so it costs nothing in adoption.
+
+Each package carries its own `LICENSE` *and* `NOTICE`, and both are listed in `files`. npm
+auto-includes a licence file sitting in the package's own directory but not a NOTICE, and
+Apache 2.0 section 4(d) requires the NOTICE to travel with every redistribution — so a single
+pair at the repo root would not have shipped in either tarball.
 
 `repository`, `homepage` and `bugs` are already set on all three packages, each pointing at its
 own directory, so every npm page links back to the right place.
