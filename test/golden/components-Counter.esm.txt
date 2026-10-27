@@ -7,5 +7,5 @@ export default function Counter({ label = "Count", step = 1 }) {
     document.title = `${label}: ${n}`;
   }, [label, n]);
   const bump = useCallback((by) => { setN(n + (by)); confetti() }, [n]);
-  return h("div", { "className": "counter" }, h("h2", null, `${label}: ${n}`), h("button", { "className": "btn primary", "onClick": () => bump(step) }, `+`), h("button", { "className": "btn", "onClick": () => setN(n - (step)) }, `-`), n>0 ? h("p", { "className": "hint" }, `keep going`) : h("p", { "className": "hint" }, `click +`));
+  return h("div", { "className": "counter" }, h("h2", null, label, ": ", n), h("button", { "className": "btn primary", "onClick": () => bump(step) }, "+"), h("button", { "className": "btn", "onClick": () => setN(n - (step)) }, "-"), n>0 ? h("p", { "className": "hint" }, "keep going") : h("p", { "className": "hint" }, "click +"));
 }

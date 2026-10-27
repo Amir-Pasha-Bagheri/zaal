@@ -40,7 +40,7 @@ test('a branch or a map with nothing under it is an error, not an empty node', (
 test('braces in text that are not an expression are escaped, the same in both backends', () => {
   assert.match(jsx('C A\n  p "a { b"\n'), /<p>a \{'\{'\} b<\/p>/);
   assert.match(jsx('C A\n  p "a {} b"\n'), /<p>a \{'\{'\}\{'\}'\} b<\/p>/);
-  assert.match(esm('C A\n  p "a { b"\n'), /`a \{ b`/);
+  assert.match(esm('C A\n  p "a { b"\n'), /h\("p", null, "a \{ b"\)/);
   assert.match(jsx('C A p:d\n  p "{d} stays"\n'), /<p>\{d\} stays<\/p>/);
 });
 
@@ -78,7 +78,7 @@ test('`<` and HTML entities in text are escaped for JSX', () => {
   assert.match(jsx('C A\n  p "a < b and 3 > 2"\n'), /<p>a \{'<'\} b and 3 > 2<\/p>/);
   assert.match(jsx('C A\n  p "a &amp; b"\n'), /<p>a \{'&amp;'\} b<\/p>/);
   assert.match(jsx('C A\n  p "Tom & Jerry"\n'), /<p>Tom & Jerry<\/p>/, 'a lone & is text in JSX');
-  assert.match(esm('C A\n  p "a < b"\n'), /`a < b`/);
+  assert.match(esm('C A\n  p "a < b"\n'), /h\("p", null, "a < b"\)/);
 });
 
 // Names the generated module writes for itself. A source name that lands on one of them used

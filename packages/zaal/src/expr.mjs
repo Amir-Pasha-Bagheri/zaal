@@ -13,6 +13,29 @@ const tmpl = s => /^\{[^{}]+\}$/.test(s) ? s.slice(1, -1)
 // The short names Zaal adds, then every DOM event React spells differently from the HTML name.
 // Without the second table `@keyup` becomes `onKeyup`, which React never attaches: the handler
 // is silently dead, and nothing says so.
+// Interpolated text, as React reads it: every `{expr}` is a child of its own. A template
+// literal would print `true`, `null` or `[object Object]` where JSX renders nothing at all —
+// the two backends have to put the same thing on the page.
+function textParts(s) {
+  const parts = [];
+  let buf = '';
+  const flush = () => { if (buf) { parts.push({ lit: true, code: JSON.stringify(buf) }); buf = ''; } };
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '\\' && (s[i + 1] === '{' || s[i + 1] === '}')) { buf += s[++i]; continue; }
+    if (s[i] === '{') {
+      const end = s.indexOf('}', i);
+      if (end < 0) { buf += s[i]; continue; }                 // a lone brace is text
+      flush();
+      parts.push({ lit: false, code: s.slice(i + 1, end) });  // the expression itself
+      i = end;
+      continue;
+    }
+    buf += s[i];
+  }
+  flush();
+  return parts.length ? parts : [{ lit: true, code: '""' }];
+}
+
 const EV = { click: 'onClick', input: 'onInput', change: 'onChange', submit: 'onSubmit',
   focus: 'onFocus', blur: 'onBlur', key: 'onKeyDown', over: 'onMouseOver', out: 'onMouseLeave' };
 
@@ -205,4 +228,4 @@ function attrParts(ctx, node) {
   return { pairs, spreads, text };
 }
 
-export { EV, ALIAS, DOM_ATTR, tmpl, interp, splitStmts, rewrite, stmts, fnBody, handler, unbrace, attrParts };
+export { EV, ALIAS, DOM_ATTR, tmpl, textParts, interp, splitStmts, rewrite, stmts, fnBody, handler, unbrace, attrParts };

@@ -1,6 +1,6 @@
 // Markup -> React elements, two ways: JSX for a bundler to compile, and createElement calls
 // for the no-install preview to run as-is.
-import { fail, attrParts, tmpl } from 'zaal';
+import { fail, attrParts, textParts, tmpl } from 'zaal';
 
 // Kinds a fragment of one can collapse into; `if`/`map`/`slot` have to go through *Kids.
 const PLAIN = new Set(['el', 'text', 'expr']);
@@ -144,7 +144,7 @@ const aliases = src => {
 // JSX reads consecutive text lines as one text node and collapses the newline between them
 // into a single space, so `p` over `"total:"` and `"5 items"` renders `total: 5 items`.
 // `createElement` would run them together, and the preview has to render what the build does.
-function esmKids(ctx, kids, textAt = new Set()) {
+function esmKids(ctx, kids, starts = new Set(), ends = new Set()) {
   const out = [];
   for (let i = 0; i < kids.length; i++) {
     const k = kids[i];
@@ -168,14 +168,24 @@ function esmKids(ctx, kids, textAt = new Set()) {
       out.push(`${k.list}.map((${k.item}, i) => ${esmNode(ctx, { kind: 'frag', kids: k.kids }, k.key ?? 'i')})`);
       continue;
     }
-    out.push(esmNode(ctx, k), ...(k.kind === 'text' ? [] : []));
-    if (k.kind === 'text') textAt.add(out.length - 1);
+    if (k.kind === 'text') {
+      // One text node, but React sees each `{expr}` as a child of its own.
+      const parts = textParts(k.value);
+      if (parts[0].lit) starts.add(out.length);
+      out.push(...parts.map(p => p.code));
+      if (parts.at(-1).lit) ends.add(out.length - 1);
+      continue;
+    }
+    out.push(esmNode(ctx, k));
   }
   return out;
 }
 
 function esmNode(ctx, n, key) {
-  if (n.kind === 'text') return tmpl(n.value);
+  if (n.kind === 'text') {
+    const parts = textParts(n.value).map(p => p.code);
+    return parts.length === 1 ? parts[0] : `${EL}(${FRAG}, null, ${parts.join(', ')})`;
+  }
   if (n.kind === 'expr') return n.code;
   if (n.kind === 'frag') {
     const k = spaced(ctx, n.kids);
@@ -193,19 +203,31 @@ function esmNode(ctx, n, key) {
     : `Object.assign({${entries.join(', ')}}, ${spreads.join(', ')})`;
   const tag = /^\p{Ll}/u.test(n.tag) && !n.tag.includes('.') ? JSON.stringify(n.tag) : n.tag;
   // Inline text (`p "a" "b"`) lands on its own line in JSX too, so it spaces the same way.
-  const inline = text.map(tmpl);
-  for (let i = inline.length - 1; i > 0; i--) inline.splice(i, 0, "' '");
+  // Inline text (`p "a" "b"`) lands on its own line in JSX too, and spaces by the same rule.
+  const inline = [];
+  let prevLit = false;
+  for (const t of text) {
+    const parts = textParts(t);
+    if (inline.length && prevLit && parts[0].lit) inline.push("' '");
+    inline.push(...parts.map(p => p.code));
+    prevLit = parts.at(-1).lit;
+  }
   const after = spaced(ctx, rest);
-  const kids = [...inline, ...(inline.length && rest[0]?.kind === 'text' ? ["' '"] : []), ...after];
+  const join = inline.length && prevLit && rest[0]?.kind === 'text'
+    && textParts(rest[0].value)[0].lit ? ["' '"] : [];
+  const kids = [...inline, ...join, ...after];
   return `${EL}(${tag}, ${props}${kids.length ? ', ' + kids.join(', ') : ''})`;
 }
 
 // Children of one element, with a `' '` between two that came from text lines.
 function spaced(ctx, kids) {
-  const textAt = new Set();
-  const out = esmKids(ctx, kids, textAt);
+  const starts = new Set(), ends = new Set();
+  const out = esmKids(ctx, kids, starts, ends);
+  // The space comes from a newline *inside one JSXText node*, so it appears only where two
+  // text lines actually touch: the first has to end in literal text and the second begin with
+  // it. `"ok {n}"` above `"total"` is two text nodes in JSX, and renders with no space.
   for (let i = out.length - 1; i > 0; i--) {
-    if (textAt.has(i) && textAt.has(i - 1)) out.splice(i, 0, "' '");
+    if (starts.has(i) && ends.has(i - 1)) out.splice(i, 0, "' '");
   }
   return out;
 }

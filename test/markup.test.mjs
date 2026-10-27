@@ -83,7 +83,7 @@ test('a handler may be written with spaces around its operators', () => {
 test('nested quotes inside an interpolation stay part of the expression', () => {
   const src = 'C A p:tone p:text\n  span.chip "{tone == "warn" ? "! " : ""}{text}"\n';
   assert.match(jsx(src), /<span className="chip">\{tone == "warn" \? "! " : ""\}\{text\}<\/span>/);
-  assert.match(esm(src), /`\$\{tone == "warn" \? "! " : ""\}\$\{text\}`/);
+  assert.match(esm(src), /h\("span", \{ "className": "chip" \}, tone == "warn" \? "! " : "", text\)/);
 });
 
 test('?/:?/: compiles to one ternary chain, and so does ? alone', () => {
@@ -166,7 +166,7 @@ test('js lines are emitted verbatim above the component', () => {
 test('esm: createElement, template strings, fragments', () => {
   const out = esm('C A p:title\n  .card\n    h1 "{title}!"\n    p "plain"\n');
   assert.match(out, /import \{ createElement as h, Fragment as F \} from 'react';/);
-  assert.match(out, /h\("div", \{ "className": "card" \}, h\("h1", null, `\$\{title\}!`\), h\("p", null, `plain`\)\)/);
+  assert.match(out, /h\("div", \{ "className": "card" \}, h\("h1", null, title, "!"\), h\("p", null, "plain"\)\)/);
 });
 
 test('esm: a lone {expr} string stays an expression, not a template', () => {
@@ -189,7 +189,7 @@ test('esm: spread plus props uses Object.assign', () => {
 // A dash in a tag can only be a custom element: no component or DOM tag has one.
 test('a dashed tag is a custom element, classes and all', () => {
   assert.match(jsx('C A\n  my-widget.big val=1 "x"\n'), /<my-widget className="big" value=\{1\}>x<\/my-widget>/);
-  assert.match(esm('C A\n  my-widget.big "x"\n'), /h\("my-widget", \{ "className": "big" \}, `x`\)/);
+  assert.match(esm('C A\n  my-widget.big "x"\n'), /h\("my-widget", \{ "className": "big" \}, "x"\)/);
 });
 
 // JSX reads consecutive text lines as one text node and collapses the newline between them
@@ -197,19 +197,29 @@ test('a dashed tag is a custom element, classes and all', () => {
 // space). `createElement` would run them together, so the esm backend spaces them to match —
 // otherwise the no-install preview renders different words from the build.
 test('two text lines are one space apart in both backends', () => {
-  const src = 'C A p:n\n  p\n    "total:"\n    "{n} items"\n';
-  assert.match(jsx(src), /<p>\n\s*total:\n\s*\{n\} items\n\s*<\/p>/);
-  assert.match(esm(src), /h\("p", null, `total:`, ' ', `\$\{n\} items`\)/);
+  // both lines are literal text, so JSX reads them as one text node and the newline between
+  // them collapses to a single space
+  const src = 'C A\n  p\n    "total:"\n    "5 items"\n';
+  assert.match(jsx(src), /<p>\n\s*total:\n\s*5 items\n\s*<\/p>/);
+  assert.match(esm(src), /h\("p", null, "total:", ' ', "5 items"\)/);
+});
+
+test('a line that starts or ends with an expression gets no space', () => {
+  // `{n}` begins a new JSXText node, and a leading newline is stripped, not collapsed
+  assert.match(esm('C A p:n\n  p\n    "total:"\n    "{n} items"\n'),
+    /h\("p", null, "total:", n, " items"\)/);
+  assert.match(esm('C A p:n\n  p\n    "ok {n}"\n    "total"\n'),
+    /h\("p", null, "ok ", n, "total"\)/);
 });
 
 test('inline text pairs space the same way', () => {
-  assert.match(esm('C A\n  p "a" "b"\n'), /h\("p", null, `a`, ' ', `b`\)/);
-  assert.match(esm('C A\n  p "single"\n'), /h\("p", null, `single`\)/, 'one text stays alone');
+  assert.match(esm('C A\n  p "a" "b"\n'), /h\("p", null, "a", ' ', "b"\)/);
+  assert.match(esm('C A\n  p "single"\n'), /h\("p", null, "single"\)/, 'one text stays alone');
 });
 
 test('an element or an expression between text keeps JSX spacing: none', () => {
   // the whitespace around them contains a newline, which JSX strips entirely
   assert.match(esm('C A p:n\n  p\n    "total:"\n    b "{n}"\n    "items"\n'),
-    /h\("p", null, `total:`, h\("b", null, n\), `items`\)/);
-  assert.match(esm('C A p:n\n  p\n    "a"\n    {n}\n    "b"\n'), /h\("p", null, `a`, n, `b`\)/);
+    /h\("p", null, "total:", h\("b", null, n\), "items"\)/);
+  assert.match(esm('C A p:n\n  p\n    "a"\n    {n}\n    "b"\n'), /h\("p", null, "a", n, "b"\)/);
 });

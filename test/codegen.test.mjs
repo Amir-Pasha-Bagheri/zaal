@@ -34,7 +34,7 @@ test('an if-chain is the whole body of a map item', () => {
 test('a map inside a branch, with a sibling after it', () => {
   const src = 'C A p:a p:xs\n  div\n    ?a\n      *xs as x\n        p "{x}"\n      p "after"\n';
   assert.match(jsx(src), /\{a \? \(\n\s*<>\n\s*\{xs\.map\(\(x, i\) => \(/);
-  assert.match(esm(src), /a \? h\(F, null, xs\.map\(\(x, i\) => h\("p", \{ key: i \}, x\)\), h\("p", null, `after`\)\) : null/);
+  assert.match(esm(src), /a \? h\(F, null, xs\.map\(\(x, i\) => h\("p", \{ key: i \}, x\)\), h\("p", null, "after"\)\) : null/);
 });
 
 test('a branch inside a branch', () => {
@@ -47,7 +47,7 @@ test('a branch inside a branch', () => {
 test('a lone `?` is a ternary in both backends', () => {
   const src = 'C A p:items\n  div\n    ?items.length\n      p "some"\n';
   assert.match(jsx(src), /\{items\.length \? \(/);
-  assert.match(esm(src), /items\.length \? h\("p", null, `some`\) : null/);
+  assert.match(esm(src), /items\.length \? h\("p", null, "some"\) : null/);
 });
 
 test('an else-if chain with four arms becomes one nested ternary', () => {
@@ -96,7 +96,7 @@ test('a slot holding several lines is wrapped in a fragment', () => {
   const out = jsx('i Panel ./Panel\nC A\n  Panel\n    slot head\n      h1 "t"\n      p "sub"\n');
   assert.match(out, /head=\{<>\n[\s\S]*<\/>\}/);
   assert.match(esm('i Panel ./Panel\nC A\n  Panel\n    slot head\n      h1 "t"\n      p "sub"\n'),
-    /"head": h\(F, null, h\("h1", null, `t`\), h\("p", null, `sub`\)\)/);
+    /"head": h\(F, null, h\("h1", null, "t"\), h\("p", null, "sub"\)\)/);
 });
 
 test('a slot holding a map', () => {
@@ -175,13 +175,17 @@ test('an assignment to something that is not state is left alone', () => {
   assert.match(jsx('C A p:box\n  button @click=box.current=null "x"\n'), /onClick=\{\(\) => box\.current=null\}/);
 });
 
-test('esm: a text node that is one whole interpolation is not a template string', () => {
+// Interpolated text is not a template string: each `{expr}` is a child of its own, because
+// that is how React reads JSX children — a boolean or null there renders as nothing, where a
+// template literal would print "true".
+test('esm: text splits into literals and expressions, as JSX children do', () => {
   assert.match(esm('C A p:x\n  p "{x}"\n'), /h\("p", null, x\)/);
-  assert.match(esm('C A p:x\n  p "{x} "\n'), /h\("p", null, `\$\{x\} `\)/);
+  assert.match(esm('C A p:x\n  p "{x} "\n'), /h\("p", null, x, " "\)/);
+  assert.match(esm('C A p:a p:b\n  p "x {a} y {b} z"\n'), /h\("p", null, "x ", a, " y ", b, " z"\)/);
 });
 
-test('esm: backticks inside text are escaped', () => {
-  assert.match(esm('C A\n  p "use `npm i` first"\n'), /`use \\`npm i\\` first`/);
+test('esm: a backtick in text needs no escaping now that text is a plain string', () => {
+  assert.match(esm('C A\n  p "use `npm i` first"\n'), /h\("p", null, "use `npm i` first"\)/);
 });
 
 // An expression in a JSX expression position — a `return`, a branch arm, a slot prop — has to
@@ -218,7 +222,7 @@ test('a boundary whose fallback is one expression keeps its fragment', () => {
 test('a dotted tag whose base is imported is a member tag', () => {
   const src = 'i { motion } from framer-motion\nC A\n  motion.div c="box" "hi"\n';
   assert.match(jsx(src), /<motion\.div className="box">hi<\/motion\.div>/);
-  assert.match(esm(src), /h\(motion\.div, \{ "className": "box" \}, `hi`\)/);
+  assert.match(esm(src), /h\(motion\.div, \{ "className": "box" \}, "hi"\)/);
 });
 
 test('a dotted tag whose base is not in scope is still tag plus classes', () => {

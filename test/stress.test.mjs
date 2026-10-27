@@ -51,7 +51,7 @@ test('fifty attributes on one element all come through', () => {
 test('a long text node with many interpolations', () => {
   const words = Array.from({ length: 40 }, (_, i) => `w${i} {n}`).join(' ');
   const out = compile(`C A s:n=0\n  p "${words}"\n`, 'esm');
-  assert.equal((out.match(/\$\{n\}/g) || []).length, 40);
+  assert.equal((out.match(/, n,|, n\)/g) || []).length, 40, 'forty expression children');
 });
 
 test('a file with three hundred elements and forty blocks compiles', () => {

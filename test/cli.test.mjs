@@ -123,7 +123,7 @@ test('a single file compiles with no project around it', async () => {
   const root = projectDir({ 'lonely/Widget.zaal': 'C Widget p:n=1\n  p "n is {n}"\n' });
   const out = run(root, ['lonely/Widget.zaal', 'built']);
   assert.match(out, /-> built\/Widget\.js/);
-  assert.match(readFileSync(join(root, 'built/Widget.js'), 'utf8'), /h\("p", null, `n is \$\{n\}`\)/);
+  assert.match(readFileSync(join(root, 'built/Widget.js'), 'utf8'), /h\("p", null, "n is ", n\)/);
 });
 
 test('`zaal build` reports packages, new dependencies and stale files', async () => {
