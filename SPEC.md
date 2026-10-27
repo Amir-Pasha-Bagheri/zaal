@@ -41,9 +41,20 @@ knowing Zaal exists.
 
 Its project files are **written once and then left alone**: a hand-added Vite plugin, dev proxy
 or npm script survives every rebuild. The only standing change a build makes to them is adding a
-package an `i` line named to `dependencies`. Inside `src/` the compiler is the author — a
-renamed or deleted `.zaal` has its module swept — and it never touches `node_modules/`, `dist/`
-or anything else you put in the folder.
+package an `i` line named to `dependencies`.
+
+Everything else in the folder is yours too. A build **only removes what a previous build of the
+same project wrote** — it records that in `.zaal/manifest.json` at the project root (build state,
+not source: gitignore it) and sweeps the difference, so a renamed or deleted `.zaal` has its
+module and its emptied directory swept while a `Dockerfile`, a CI workflow, a `public/` folder, a
+hand-written `src/helpers.js` and `node_modules/` are all left exactly where you put them. A
+missing or unreadable manifest is not an error; the build simply has nothing to sweep against.
+
+`index.html` is the exception that is generated *and* edited by hand, since its title, mount node
+and stylesheet links all follow `app.zaal`. It is regenerated every build, and any `<head>` child
+the compiler did not write — a favicon, meta and OG tags, a font preconnect, an analytics
+snippet, a CSP — is carried across and placed after the generated ones. A `<link>` the build
+stops emitting still goes, because the manifest knows it was the compiler's.
 
 Indentation = nesting. One node per line. `//` comments ignored — a whole line, or the tail of
 one (`store Theme Todos  // outermost first`); inside a quoted string it is text, not a comment.
@@ -60,12 +71,15 @@ one (`store Theme Todos  // outermost first`); inside a quoted string it is text
 | `i logo ./logo.png` | an asset: the path keeps its extension and the file is copied to the output (the `esm` preview resolves it to a URL, since it has no bundler) |
 | `js const x = 1` | emitted verbatim above the component |
 | `S Cart s:items=[]` | a store: context + `CartProvider` + `useCart()` — see **Global state** |
+| `H useCart p:id s:n=0` | a custom hook: `export default function useCart(id)` — see **Custom hooks** |
 
 `p:` = prop (`=` gives a default), `s:` = state (`=` gives the initial value). Each has to be a
-name, and every block in a file has to have a name of its own. A block's name starts with a
-capital (React reads a lower-case tag as a DOM element); names may hold any letter — `C Café
-p:prénom` — but not a JavaScript keyword, and not a name the generated module writes itself
-(`value`/`children` in a store, `error`/`reset` in a boundary, a setter another `s:` needs).
+name, and every block in a file has to have a name of its own. A `C` or `S` name starts with a
+capital (React reads a lower-case tag as a DOM element) and an `H` name starts with `use` and a
+capital (React reads a hook by its name); names may hold any letter — `C Café p:prénom` — but
+not a JavaScript keyword, and not a name the generated module writes itself (`value`/`children`
+in a store, `value` in a hook that hands back what it declares, `error`/`reset` in a boundary, a
+setter another `s:` needs).
 
 **Error boundaries** — `C Oops catch` generates the class, because no hook catches a render error.
 The children render while nothing has thrown; the markup is the fallback, with `error` and `reset`
@@ -147,8 +161,8 @@ A component may have **several root lines**; they are wrapped in a fragment for 
 **One block per file is the default export** — the one named after the file. Extra `C`/`S`
 blocks in the same file become named exports, reachable with `i { Row } from ./Table`.
 
-`i`, `js`, `slot`, `fx`, `memo`, `cb`, `ref`, `ctx` and `use` are reserved heads, so no element
-may be named one. `i` is the exception that keeps `<i>`: `i "text"` and `i c="..."` are the
+`i`, `js`, `slot`, `ret`, `fx`, `memo`, `cb`, `ref`, `ctx` and `use` are reserved heads, so no
+element may be named one. `i` is the exception that keeps `<i>`: `i "text"` and `i c="..."` are the
 element, `i X ./X` is an import.
 
 ## Handlers (`@ev=`)
@@ -247,9 +261,54 @@ Each hook line declares a fresh name: reusing a `p:` prop, an `s:` state, one of
 an earlier hook's name is a build error, as is a name that is not an identifier.
 
 A hook line nested inside markup is an error: they belong to the component, not to an element.
-`fx`, `memo`, `cb`, `ref`, `ctx` and `use` are reserved heads — no element may be named one.
+`fx`, `memo`, `cb`, `ref`, `ctx`, `use` and `ret` are reserved heads — no element may be named one.
 A suffix (`!`, `*`, `[a b]`) belongs to the three hooks that have a dependency array, and every
 name in `[a b]` has to be a prop, a state or a value the component declares.
+
+## Custom hooks (`H useName`)
+A hook is a component with no markup and a value instead: the same `s:`, `memo`, `cb`, `fx`,
+`ref`, `ctx` and `use` lines, in a function a component calls. Before `H`, logic shared by two
+components had to be hand-written `js`.
+
+React decides what is a hook by the name, so the name is not a free choice: it starts with `use`
+and a capital (`H useCounter`), and anything else is a build error.
+
+```
+H useCounter p:start=0 s:n=start
+  cb inc() = n = n + 1
+  cb reset() = n = start
+  memo big = n > 9
+```
+```jsx
+export default function useCounter(start = 0) {
+  const [n, setN] = useState(start);
+  const inc = useCallback(() => setN(n + 1), [n]);
+  const reset = useCallback(() => setN(start), [start]);
+  const big = useMemo(() => n > 9, [n]);
+  const value = useMemo(() => ({ n, setN, inc, reset, big }), [n, inc, reset, big]);
+  return value;
+}
+```
+
+**`p:` is positional here**, unlike a component's props: `useCounter(5)` is how React code calls
+a hook, so the parameters keep their source order. `s:` means what it always means.
+
+**What it hands back**, in order of preference:
+- `ret <expr>` — whatever you say, and nothing else. `ret [n, setN]` for a tuple, `ret n > 2` for
+  a single value. It is the **last** line of the block (a hook below it would never run, and
+  React requires every hook to run every render), and there is only one.
+- nothing — then it hands back everything it declares, memoised, exactly the way a store builds
+  its context value. A caller may put the object in a dependency array.
+- nothing to declare and no `ret` — a void hook, with no `return` at all. `H useTitle p:t` with
+  one `fx` line is a real shape.
+
+A hook is reached the way a component is: `i useCounter ./hooks/useCounter`. **Calling one that
+is not in scope is a build error**, with the `i` line to add — the same guarantee a capitalized
+tag already had. React's own hooks, the router's (`useRoute`, `useQuery`) and a store's
+`use<Name>()` need no import.
+
+A hook is state *per call*: two components calling `useCounter()` hold two counters. One piece of
+state shared between them is what `S` is for.
 
 ## Global state (`S Name`)
 A store is a component with no markup: whatever it declares becomes its context value. Every
@@ -355,7 +414,8 @@ default export. A build also generates:
 - `src/main.jsx` — createRoot + route table, wrapped in every store's provider
 - `src/router.jsx` — dependency-free hash router (`Router`, `Link`, `useRoute`)
 - `src/styles/ui.css` — the compiled design system, with the `css` stylesheets beside it
-- `index.html` — title, mount div, stylesheet links and `<script src="./src/main.jsx">`
+- `index.html` — title, mount div, stylesheet links and `<script src="./src/main.jsx">`;
+  `<head>` children the compiler did not write are preserved
 - `package.json`, `vite.config.js`, `.gitignore` — once each, if absent
 
 `app.zaal` and `ui.zaal` are config, not modules: they compile to the app, never to a module of

@@ -61,7 +61,7 @@ test('a renamed source has its stale module and empty directory swept', () => {
   assert.ok(!has(root, 'application/src/widgets'), 'the emptied directory goes too');
 });
 
-test('assets and node_modules in the output are left alone', () => {
+test('assets, node_modules and hand-written modules in the output are left alone', () => {
   const root = projectDir(NESTED);
   buildIn(root);
   mkdirSync(join(root, 'application/src/assets'), { recursive: true });
@@ -69,11 +69,15 @@ test('assets and node_modules in the output are left alone', () => {
   mkdirSync(join(root, 'application/node_modules/vite'), { recursive: true });
   writeFileSync(join(root, 'application/node_modules/vite/index.js'), '// installed');
   writeFileSync(join(root, 'application/src/hand-written.js'), '// mine');
+  writeFileSync(join(root, 'application/src/hand-written.css'), '.mine{}');
   const out = buildIn(root);
   assert.ok(has(root, 'application/src/assets/logo.png'));
   assert.ok(has(root, 'application/node_modules/vite/index.js'));
-  assert.ok(out.stale.includes('src/hand-written.js'),
-    'inside src/ the compiler is the author, so a stray .js is swept');
+  // The sweep goes by what the last build wrote, not by what a filename looks like: a module
+  // the developer put beside the generated ones is not the compiler's to delete.
+  assert.deepEqual(out.stale, []);
+  assert.equal(read(root, 'application/src/hand-written.js'), '// mine');
+  assert.equal(read(root, 'application/src/hand-written.css'), '.mine{}');
 });
 
 test('project() reports the blocks it found', () => {
@@ -127,8 +131,8 @@ test('the example project builds the jsx deliverable with no warnings', () => {
     'components/Badge.jsx', 'components/Boom.jsx', 'components/Counter.jsx',
     'components/Field.jsx', 'components/Item.jsx', 'components/Nav.jsx', 'components/Oops.jsx',
     'components/Panel.jsx', 'components/Sparkline.jsx', 'components/Spinner.jsx',
-    'components/TodoList.jsx', 'data/dex.jsx', 'img/logo.png', 'main.jsx', 'pages/About.jsx',
-    'pages/Dex.jsx', 'pages/Home.jsx', 'pages/NotFound.jsx', 'pages/Pokemon.jsx',
+    'components/TodoList.jsx', 'data/dex.jsx', 'hooks/useDex.jsx', 'img/logo.png', 'main.jsx',
+    'pages/About.jsx', 'pages/Dex.jsx', 'pages/Home.jsx', 'pages/NotFound.jsx', 'pages/Pokemon.jsx',
     'pages/Stats.jsx', 'router.jsx', 'stores/Caught.jsx', 'stores/Theme.jsx',
     'stores/Todos.jsx', 'styles/extra.css', 'styles/ui.css',
   ]);
@@ -152,7 +156,7 @@ test('a single-file compile is the same module the build writes', async () => {
   const { compile, project } = await import('../zaal.mjs');
   const p = project({ root });
   const src = read(root, 'zaal/components/Counter.zaal');
-  const one = compile(src, 'esm', { ui: p.ui, stores: p.stores, comps: p.comps,
+  const one = compile(src, 'esm', { ui: p.ui, stores: p.stores, comps: p.comps, hooks: p.hooks,
     pins: p.app.pins, cdn: p.app.cdn, main: 'Counter' });
   assert.equal(one, read(root, '.zaal-dev/src/components/Counter.js'));
 });

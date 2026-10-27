@@ -6,7 +6,7 @@ agent has to be told about); a feature is worth adding when the Zaal form is mat
 than the React it replaces and needs no explanation. Anything that makes a `.zaal` file longer
 than the JSX it compiles to is the wrong answer.
 
-Status: SPEC.md is fully implemented (497 tests pass). Everything below is beyond the spec.
+Status: SPEC.md is fully implemented (656 tests pass). Everything below is beyond the spec.
 
 ## Part 1 — gaps (wrong or missing in what Zaal already claims) — **done**
 
@@ -127,9 +127,41 @@ default `base` wrote absolute `/assets/…` URLs into `dist/index.html`, so a bu
 worked when served from a domain root — not from a project page, a subdirectory, or disk. The
 generated `vite.config.js` now sets `base: './'`.
 
+## Part 1h — what testing F1 turned up
+
+54 specs for `H` blocks (`test/hook-blocks.test.mjs`) found three bugs, two of them older than
+the feature and reachable with no `H` block in sight. Same pattern as Part 1b: writing a real
+thing against the DSL is what finds them.
+
+- [x] **A store consumed in the file that declares it self-imported.** `S Theme` beside a `C`
+  that reads it emitted `import { useTheme } from './Theme.jsx'` *and*
+  `export function useTheme()` — the name declared twice, so the module did not parse. Nothing
+  to do with hooks; it just took a file holding three kinds of block to notice. Regression test
+  in `test/stores.test.mjs`.
+- [x] **The import hint named an export the module does not write.** A file whose name matches no
+  block still makes its *first* block the default export (as SPEC says), but the hint was keyed
+  to `name !== basename(file)` alone — so `widgets.zaal` holding `C Row` and `C Cell` told you to
+  write `i { Row } from ./widgets` when the module said `export default function Row`. The
+  project scan now resolves each file's default export the way the code generator does.
+  Regression test in `test/errors.test.mjs`.
+- [x] **F1's own new check read display text.** `checkHooks` scanned raw tokens, so
+  `p "call useThing() yourself"` was a missing import, and a hook declared by a `js` line *inside*
+  a block was invisible to it. It now asks `codeOf` where a node keeps code, one node at a time,
+  and counts a block's own `p:`/`s:`/hook-line names as in scope.
+
 ## Part 2 — features (React surface Zaal cannot say)
 
-- [ ] **F1. Custom hook blocks.** No `H useThing` — a shared hook is hand-written JS today.
+- [x] **F1. Custom hook blocks.** `H useName` — a component with no markup and a value instead:
+  the same `s:`, `memo`, `cb`, `fx`, `ref`, `ctx` and `use` lines, in a function a component
+  calls. `p:` is positional here (`useCounter(5)` is how React code calls one). With no `ret` it
+  hands back everything it declares, memoised, exactly as a store builds its context value; with
+  `ret` it hands back that, and a block that declares nothing is a void hook with no `return` at
+  all. Calling a hook that is not in scope is now a build error naming the `i` line to add — the
+  guarantee a capitalized tag already had, which is the escape hatch this closes: a shared hook
+  used to be hand-written `js`. `example/zaal/hooks/useDex.zaal` is the first one: it took the
+  fetch/status/list logic out of `C Dex`, whose body is now two `use` lines. 54 specs — every
+  hook head inside an `H` block, both backends compared through the differential oracle, real
+  React, and a real DOM for effects, cleanup on unmount and StrictMode.
 - [ ] **F2. Dynamic / polymorphic tags.** `{Tag}` as an element, an `as=` prop.
 - [ ] **F3. Portals.** A `portal` head, rather than a manual `createPortal` expression child.
 - [ ] **F4. Own contexts.** `ctx` reads one; only `S` creates one. No `createContext` form.
@@ -138,11 +170,20 @@ generated `vite.config.js` now sets `base: './'`.
 - [ ] **F6. Router depth.** A flat hash router: no history/pathname mode, nested layouts,
   redirects, query params, scroll restoration or route data loading. (A declared 404 is done —
   `/* NotFound`.) Nested layouts are the first thing a real app wants.
-- [ ] **F7. Per-route `<head>`.** Title and meta are app-global (`t` in `app.zaal`).
+- [ ] **F7. Per-route `<head>`.** Title and meta are app-global (`t` in `app.zaal`). A hand-edited
+  `<head>` does survive a rebuild, so this is ergonomics rather than data loss.
 - [ ] **F8. TypeScript output.** No types, no `.d.ts`, no prop types.
 - [ ] **F9. Test scaffolding.** `application/` ships no vitest/RTL config.
 - [ ] **F10. Server-side React.** No SSR/RSC story: `'use client'`, server actions,
   `<form action={fn}>` are outside the model.
+
+- [ ] **F12. A hook's setter gets no assignment sugar.** `s:q=""` in a block makes
+  `@input=q=e.target.value` rewrite to `setQ(...)`, but a `setQ` that arrived through
+  `use { q, setQ } = useDex()` is just a name, so the page has to write `setQ(e.target.value)`
+  itself — see `example/zaal/pages/Dex.zaal`. Found by moving real logic into an `H` block (F1).
+  The rewrite is keyed to the `s:` names of the block being compiled; reaching a hook's setters
+  means knowing which names a called hook hands back, which is the first thing in Zaal that
+  would need a signature to cross a module boundary.
 
 - [ ] **F11. Async flow sugar.** A page that fetches writes its own `setStatus(…)`/`setData(…)`
   calls inside a promise chain (see `zaal/pages/Dex.zaal`): state assignment only rewrites at the

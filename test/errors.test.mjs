@@ -195,3 +195,28 @@ test('a block may not declare one name twice', () => {
   throws('C O catch p:a p:a\n  p "x"\n', /p:a and p:a are the same name/);
   assert.doesNotThrow(() => compile('C A p:a s:b=1\n  p "{a}{b}"\n', 'jsx'));
 });
+
+test('the import hint names the export the module actually writes', () => {
+  // A file whose name matches no block still makes its *first* block the default export, so a
+  // hint of `i { Row } from ./Table` was wrong for that one. Found while testing `H` (F1).
+  const root = projectDir({
+    'zaal/app.zaal': 'A App\n  / Home\n',
+    'zaal/widgets.zaal': 'C Row\n  tr "r"\nC Cell\n  td "c"\n',
+    'zaal/Home.zaal': 'C Home\n  table\n    Row\n',
+  });
+  assert.throws(() => buildIn(root), /add `i Row \.\/widgets`/,
+    'Row is first in a file named after neither block, so it is the default export');
+  const second = projectDir({
+    'zaal/app.zaal': 'A App\n  / Home\n',
+    'zaal/widgets.zaal': 'C Row\n  tr "r"\nC Cell\n  td "c"\n',
+    'zaal/Home.zaal': 'C Home\n  table\n    Cell\n',
+  });
+  assert.throws(() => buildIn(second), /add `i \{ Cell \} from \.\/widgets`/, 'Cell is a named export');
+  // ...and when the file *is* named after a block, that block is the default
+  const matching = projectDir({
+    'zaal/app.zaal': 'A App\n  / Home\n',
+    'zaal/Cell.zaal': 'C Row\n  tr "r"\nC Cell\n  td "c"\n',
+    'zaal/Home.zaal': 'C Home\n  table\n    Row\n',
+  });
+  assert.throws(() => buildIn(matching), /add `i \{ Row \} from \.\/Cell`/);
+});

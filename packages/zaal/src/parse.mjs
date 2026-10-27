@@ -61,7 +61,7 @@ const nameError = n => RESERVED.has(n)
 const isState = (c, n) => c.state.some(s => s.name === n);
 const setter = n => 'set' + n[0].toUpperCase() + n.slice(1);
 
-const RAW_BODY = new Set(['hook', 'line', 'js']);
+const RAW_BODY = new Set(['hook', 'line', 'js', 'ret']);
 
 // `fx` / `memo n = …` / `cb f(x) = …` / `ref el` / `ctx theme = Ctx` / `use [a, b] = useReducer(…)`.
 // The suffix pins the dependency array: none = inferred, `!` = mount only, `*` = every render,
@@ -82,6 +82,17 @@ function lineNode(t) {
     }
     return { kind: head === 'C' ? 'comp' : 'store', name, parts: t.slice(2) };
   }
+  // `H useThing` — a custom hook: the hook lines a `C` block takes, in a function a component
+  // can call. React decides what is a hook by the name, so the name is not a free choice: the
+  // rules of hooks, every lint rule and React's own DevTools all key off `use` + a capital.
+  if (head === 'H') {
+    const name = t[1];
+    if (!name || !IDENT.test(name) || !/^use\p{Lu}/u.test(name)) {
+      throw new Error(`H ${name ?? ''}`.trim()
+        + ': a hook\'s name has to start with `use` and a capital — `H useCounter`');
+    }
+    return { kind: 'hookdef', name, parts: t.slice(2) };
+  }
   if (head === 'A') return { kind: 'app', name: t[1] };
   // `i X ./X` · `i {a,b} from pkg` · `i pkg/x.css` — but `i "text"` / `i c="em"` is the <i> element
   if (head === 'i' && t.length > 1 && !t[1].startsWith('"') && !t[1].includes('=')) {
@@ -90,6 +101,9 @@ function lineNode(t) {
     return r.length > 1 ? { kind: 'import', what: r[0], from: r[1], lazy } : { kind: 'import', spec: r[0] };
   }
   if (head === 'js') return { kind: 'js', code: t.slice(1).join(' ') };
+  // `ret <expr>` — what an `H` block hands back. Only an `H` block has anything to return; the
+  // `C` and `S` compilers say so, rather than leaving a stray `<ret>` element in the markup.
+  if (head === 'ret') return { kind: 'ret', code: t.slice(1).join(' ') };
   if (head.startsWith('/')) return { kind: 'route', path: head, component: t[1], lazy: t.includes('lazy') };
   // The test is the rest of the line, so `?a.length > 2` reads the way it is written.
   if (head.startsWith('?')) return { kind: 'if', test: [head.slice(1), ...t.slice(1)].join(' ').trim() };

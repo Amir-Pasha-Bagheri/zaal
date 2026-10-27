@@ -200,3 +200,19 @@ test('two stores may not share one persist key', () => {
   assert.match(buildIn(root, 'jsx').warnings.join('\n'),
     /S A and S B both persist to `shared` — one would overwrite the other/);
 });
+
+test('a store consumed in the file that declares it is not imported into it', async () => {
+  // `S Theme` writes `useTheme()` into this very module; importing it as well declared the name
+  // twice and the module did not parse. Found while testing `H` blocks (ROADMAP F1).
+  const { compile } = await import('../zaal.mjs');
+  const src = 'S Theme s:dark=false\nC Page\n  use { dark } = Theme\n  div "{dark}"\n';
+  for (const target of ['jsx', 'esm']) {
+    const out = compile(src, target, { main: 'Page', stores: new Map([['Theme', 'Theme']]) });
+    assert.doesNotMatch(out, /^import \{ useTheme \}/m, `${target}: no self-import`);
+    assert.equal(out.match(/function useTheme\(/g).length, 1, `${target}: declared once`);
+  }
+  // a store in another file is still imported
+  const other = compile('C Page\n  use { dark } = Theme\n  div "{dark}"\n', 'jsx',
+    { main: 'Page', stores: new Map([['Theme', 'stores/Theme']]) });
+  assert.match(other, /import \{ useTheme \} from '\.\/stores\/Theme\.jsx';/);
+});

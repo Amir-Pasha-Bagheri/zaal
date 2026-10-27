@@ -5,3 +5,5 @@ out/
 example/application/
 # `zaal dev`'s zero-install preview
 .zaal-dev/
+# build state: what the last build wrote, so the next one knows what to sweep
+.zaal/

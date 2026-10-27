@@ -1,0 +1,11 @@
+// The list, the search box and the network state behind the Pokédex page — the logic `C Dex`
+// used to carry itself. An `H` block is a component with no markup: the same `s:`, `cb`, `fx`
+// and `memo` lines, handed back as a value so the page is only about what it renders.
+i { FALLBACK, API } from ../data/dex
+H useDex s:q="" s:list=[] s:status="loading"
+  cb load(signal) = setStatus("loading"); fetch("{API}?limit=24", { signal }).then(r => r.json()).then(d => { setList(d.results); setStatus("live") }).catch(e => { if (e.name === "AbortError") return; setList(FALLBACK); setStatus("offline") })
+  fx!
+    const ctrl = new AbortController()
+    load(ctrl.signal)
+    off ctrl.abort()
+  memo shown = list.filter(p => p.name.includes(q.trim().toLowerCase()))

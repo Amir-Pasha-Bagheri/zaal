@@ -7,7 +7,7 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 const APP = new URL('../example/application/', import.meta.url).pathname;
@@ -76,5 +76,27 @@ test('nothing in the deliverable reaches back into the compiler', { skip: false 
     const body = readFileSync(join(APP, f), 'utf8');
     assert.doesNotMatch(body, /from ['"]@?zaal|zaal\.mjs|packages\/(zaal|react)/,
       `${f} depends on the compiler`);
+  }
+});
+
+// A merged index.html (ROADMAP G13) is no longer purely generated markup — it carries whatever
+// the developer left in the `<head>`. The bundler has to accept that too, not just our template.
+test('Vite builds a merged index.html, preserved children and all', { skip }, () => {
+  const page = join(APP, 'index.html');
+  const original = readFileSync(page, 'utf8');
+  try {
+    writeFileSync(page, original.replace('  </head>',
+      '    <meta property="og:title" content="Merged" />\n'
+      + '    <!-- preserved -->\n'
+      + '    <script>window.zaalMerged = true;</script>\n  </head>'));
+    const out = execFileSync('npm', ['run', 'build'], { cwd: APP, encoding: 'utf8', stdio: 'pipe' });
+    assert.doesNotMatch(out, /Rollup failed|error during build/);
+    const built = readFileSync(join(APP, 'dist/index.html'), 'utf8');
+    assert.match(built, /og:title/, 'the preserved tag reaches the bundle');
+    assert.match(built, /<!-- preserved -->/);
+    assert.match(built, /window\.zaalMerged/);
+    assert.match(built, /<script type="module" crossorigin src=/, 'and the entry is still hashed');
+  } finally {
+    writeFileSync(page, original);
   }
 });

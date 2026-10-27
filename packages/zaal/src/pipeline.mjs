@@ -9,6 +9,7 @@ import { basename, dirname, join, extname, resolve, sep } from 'node:path';
 import { SRC_DIR, APP_FILE, OUT_SRC, OUT_CSS, posix } from './layout.mjs';
 import { fail, inFile } from './diagnostics.mjs';
 import { syncDeps } from './deps.mjs';
+import { readManifest, writeManifest } from './manifest.mjs';
 import { warn, pkgLine } from './log.mjs';
 
 // app.zaal, the design system and every block in zaal/ — the context a source file compiles
@@ -52,28 +53,42 @@ function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR, parseApp, p
     .filter(f => !config.has(posix(join(srcDir, f))))
     .map(f => [f, readFileSync(join(root, srcDir, f), 'utf8')]));
   // Every block in zaal/, so a file referencing a component can be told which `i` line it needs.
-  const stores = new Map(), comps = new Map(), clashes = [];
+  const stores = new Map(), comps = new Map(), hooks = new Map(), clashes = [];
   // What each store reads (`use { … } = Other`) and where it persists: the provider order has
   // to follow the first, and two stores may not share the second.
   const storeDeps = new Map(), storeKeys = new Map();
   for (const [f, src] of sources) {
     const file = f.replace(/\.zaal$/, '');
     let current = null;
+    // Which block of this file is its default export, and so how an `i` line reaches each one.
+    // The rule the code generator follows: the block named after the file, or the first one if
+    // none matches. Recorded in order, then resolved once the whole file has been read.
+    const order = [];
     for (const line of src.split('\n')) {
-      const block = /^([CS])[ \t]+(\p{Lu}[\p{L}\p{N}_$]*)([ \t].*)?$/u.exec(line);
+      // `C`/`S` name a component or a store and are capitalised; `H` names a hook, which React
+      // requires be `use` + a capital. Three heads, so two shapes.
+      const block = /^([CS])[ \t]+(\p{Lu}[\p{L}\p{N}_$]*)([ \t].*)?$/u.exec(line)
+        || /^(H)[ \t]+(use\p{Lu}[\p{L}\p{N}_$]*)([ \t].*)?$/u.exec(line);
       if (block) {
         const [, head, name, rest = ''] = block;
         // One name, two files: a reference to it would resolve to whichever came last.
-        const prev = head === 'S' ? stores.get(name) : comps.get(name)?.file;
+        const prev = head === 'S' ? stores.get(name)
+          : head === 'H' ? hooks.get(name)?.file : comps.get(name)?.file;
         if (prev && prev !== file) clashes.push(`${head} ${name} is declared in both ${prev}.zaal and ${file}.zaal`);
-        if (head === 'S') {
+        if (head === 'H') {
+          // A hook is called, never rendered, so it takes no part in provider order.
+          order.push(['H', name]);
+          hooks.set(name, { file, named: true });
+          current = null;
+        } else if (head === 'S') {
           stores.set(name, file);
           storeDeps.set(name, new Set());
           const persist = /(?:^|[ \t])persist(?:=(\S+))?(?=[ \t]|$)/.exec(rest);
           if (persist) storeKeys.set(name, persist[1] || `zaal:${name.toLowerCase()}`);
           current = name;
         } else {
-          comps.set(name, { file, named: name !== basename(file) });
+          order.push(['C', name]);
+          comps.set(name, { file, named: true });
           current = null;
         }
         continue;
@@ -82,6 +97,9 @@ function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR, parseApp, p
       const reads = /^[ \t]+use\b.*=[ \t]*(\p{Lu}[\p{L}\p{N}_$]*)[ \t]*$/u.exec(line);
       if (reads) storeDeps.get(current).add(reads[1]);
     }
+    // `S` is always reached as `use<Name>`, a named export either way, so only C and H care.
+    const def = order.find(([, n]) => n === basename(file)) ?? order[0];
+    if (def) (def[0] === 'H' ? hooks : comps).get(def[1]).named = false;
   }
   const sharing = new Map();
   for (const [name, key] of storeKeys) {
@@ -91,7 +109,7 @@ function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR, parseApp, p
     }
     sharing.set(key, name);
   }
-  return { app, appSrc, ui, sources, stores, comps, clashes, storeDeps, storeKeys };
+  return { app, appSrc, ui, sources, stores, comps, hooks, clashes, storeDeps, storeKeys };
 }
 
 // Compile a project and write it out. `framework` is the target (`@zaal/react`, `@zaal/vue`, …);
@@ -106,7 +124,7 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
       + ` ${framework.name} has ${Object.keys(framework.backends).join(', ')}`);
   }
   const { ext, outDir } = be;
-  const { app, appSrc, ui, sources, stores, comps, clashes, storeDeps = new Map() } =
+  const { app, appSrc, ui, sources, stores, comps, hooks, clashes, storeDeps = new Map() } =
     project({ root, appFile, srcDir, parseApp: framework.parseApp, parseUI: framework.parseUI });
   const made = [], used = new Map(), pkgs = new Map(), assets = new Set();
   inFile(appSrc, appFile, () => { for (const r of app.routes) {
@@ -123,7 +141,8 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
     const path = f.replace(/\.zaal$/, '');
     const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
     const code = inFile(src, join(srcDir, f), () => framework.compile(src, backend,
-      { ui, used: seen, pkgs, pins: app.pins, cdn: app.cdn, stores, comps, dir, assets, main: basename(path) }));
+      { ui, used: seen, pkgs, pins: app.pins, cdn: app.cdn, stores, comps, hooks, dir, assets,
+        main: basename(path) }));
     files.set(`${OUT_SRC}/${path}${ext}`, code);
     for (const c of seen) if (!used.has(c)) used.set(c, f);
     made.push(`${OUT_SRC}/${path}${ext}`);
@@ -150,6 +169,19 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
   // files; `application/` is the one a developer runs, builds and commits.
   const scaffolded = be.scaffold ? framework.scaffold(join(root, outDir), app) : [];
   const deps = be.scaffold ? syncDeps(join(root, outDir), pkgs) : [];
+  const prev = readManifest(root, posix(outDir));
+  // index.html is generated from app.zaal every build, and it is also the one generated file a
+  // developer edits by hand — a favicon, meta tags, an analytics snippet. Ask the target to
+  // carry across whatever it did not write, before the new one lands on top of it. Only for an
+  // output a developer owns: the preview is rebuilt from nothing every time.
+  let head = null;
+  if (be.scaffold && framework.mergeHead && files.has('index.html')) {
+    const page = join(root, outDir, 'index.html');
+    const merged = framework.mergeHead(files.get('index.html'),
+      existsSync(page) ? readFileSync(page, 'utf8') : null, prev?.head);
+    files.set('index.html', merged.html);
+    head = merged.head;
+  }
   for (const [name, code] of files) {
     if (name.includes('/')) mkdirSync(join(root, outDir, name.slice(0, name.lastIndexOf('/'))), { recursive: true });
     writeFileSync(join(root, outDir, name), code);
@@ -173,15 +205,22 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
     writeFileSync(join(root, outDir, to), readFileSync(from));
     copied.push(to);
   }
-  // A deleted or renamed .zaal must not leave a live module behind in the output. Only the
-  // generated tree is swept: node_modules/, dist/ and anything else in `application/` belongs
-  // to the developer, and a rebuild has no business reaching into it.
+  // A deleted or renamed .zaal must not leave a live module behind in the output. What is stale
+  // is what the last build wrote and this one did not — read from the manifest, so a file the
+  // developer added is never a candidate, whatever it is called. node_modules/, dist/ and
+  // everything else in `application/` is theirs, and a rebuild has no business reaching into it.
   const keep = new Set([...files.keys(), ...copied]);
+  const live = f => existsSync(join(root, outDir, f)) && statSync(join(root, outDir, f)).isFile();
+  // No manifest means a project built by an older Zaal (or one whose state directory was
+  // deleted): sweep the generated tree by extension this once, the way that Zaal did, so its
+  // leftovers still go. From the next build on the manifest answers precisely.
   const genDir = join(root, outDir, OUT_SRC);
-  const stale = (existsSync(genDir) ? readdirSync(genDir, { recursive: true }) : [])
-    .map(f => `${OUT_SRC}/${String(f).split(sep).join('/')}`)
-    .filter(f => /\.(jsx?|css)$/.test(f) && !keep.has(f))
-    .filter(f => statSync(join(root, outDir, f)).isFile());        // assets are left alone
+  const stale = prev?.files
+    ? prev.files.filter(f => !keep.has(f) && live(f))
+    : (existsSync(genDir) ? readdirSync(genDir, { recursive: true }) : [])
+      .map(f => `${OUT_SRC}/${String(f).split(sep).join('/')}`)
+      .filter(f => /\.(jsx?|css)$/.test(f) && !keep.has(f))
+      .filter(f => statSync(join(root, outDir, f)).isFile());      // assets are left alone
   for (const f of stale) unlinkSync(join(root, outDir, f));
   // A directory the output no longer mirrors goes with it; deepest first, and only if it is empty.
   // Every ancestor is a candidate: emptying src/pages/ may leave src/ empty too.
@@ -193,7 +232,9 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
   for (const d of [...dirs].sort((a, b) => b.length - a.length)) {
     try { rmdirSync(join(root, outDir, d)); } catch {}            // not empty: something else lives there
   }
-  return { app, made, outDir, ui, warnings, pkgs, deps, stores, stale, scaffolded };
+  // What this build wrote, for the next one to sweep against.
+  writeManifest(root, posix(outDir), { files: [...keep].sort(), ...(head ? { head } : {}) });
+  return { app, made, outDir, ui, warnings, pkgs, deps, stores, hooks, stale, scaffolded };
 }
 
 /* ---------- static server (esm mode) ---------- */

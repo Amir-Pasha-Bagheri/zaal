@@ -44,6 +44,8 @@ function checkMarkup(k) {
   if (MARKUP.has(k.kind)) return;
   if (k.kind === 'else') fail(k, `\`${k.test ? ':?' + k.test : ':'}\` needs a \`?\` branch directly above it`);
   if (k.kind === 'hook' || k.kind === 'line') fail(k, 'hook lines must be direct children of `C`');
+  // `ret` is a real line, just not one a component has: a component returns its markup.
+  if (k.kind === 'ret') fail(k, '`ret` belongs in an `H` block — a `C` block returns its markup');
   fail(k, `\`${k.raw?.[0]}\` is a top-level line — it can't appear inside markup`);
 }
 

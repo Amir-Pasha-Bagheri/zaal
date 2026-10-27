@@ -11,7 +11,7 @@ import { APP_DIR, DEV_DIR, build as coreBuild, watchAndServe as coreWatch,
 import { parseApp } from './app.mjs';
 import { parseUI, uiCss } from './ui.mjs';
 import { compile } from './compile.mjs';
-import { router, mainFile, html } from './entry.mjs';
+import { router, mainFile, html, mergeHead } from './entry.mjs';
 import { scaffold } from './imports.mjs';
 
 const react = {
@@ -28,6 +28,8 @@ const react = {
   compile,
   mainFile,
   html,
+  // index.html is generated, but a developer may also have edited its <head> by hand.
+  mergeHead,
   scaffold,
   // React compiles to a web page, so the web layer answers what an app declaration and a design
   // system are. A target compiling to a backend service would answer these differently, or not
@@ -50,6 +52,6 @@ const watchAndServe = (opts = {}) => coreWatch({ ...opts, framework: react });
 const project = (opts = {}) => coreProject({ ...opts, parseApp, parseUI });
 
 export default react;
-export { react, build, watchAndServe, project, compile, router, mainFile, html, scaffold };
+export { react, build, watchAndServe, project, compile, router, mainFile, html, mergeHead, scaffold };
 export { parseApp, storeOrder } from './app.mjs';
 export { parseUI, uiCss, PROP, tokenRef } from './ui.mjs';

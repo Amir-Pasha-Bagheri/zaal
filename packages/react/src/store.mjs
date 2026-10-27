@@ -40,6 +40,9 @@ function store(node, target, opts = {}) {
   const reactive = new Set(ctx.state.map(st => st.name)), declared = [];
   const below = laterNames(node.kids);
   for (const [i, k] of node.kids.entries()) {
+    if (k.kind === 'ret') {
+      fail(k, `S ${node.name}: \`ret\` belongs in an \`H\` block — a store hands back everything it declares`);
+    }
     if (k.kind !== 'hook' && k.kind !== 'js') fail(k, `S ${node.name}: a store has no markup`);
     lines.push(...hookCode(ctx, k, reactive, declared, below(i)));
   }

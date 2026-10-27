@@ -20,7 +20,10 @@ export const available = Boolean(esbuild && server && react);
 // Modules land inside node_modules/ so that `import 'react'` resolves the way it would in an
 // app, and so a stray file never ends up in the repo.
 const DIR = new URL('../../node_modules/.zaal-test/', import.meta.url).pathname;
-mkdirSync(DIR, { recursive: true });
+// Test files run in parallel processes and each one's `after` removes this directory, so it has
+// to be made where it is used rather than once at import: otherwise whichever file finishes
+// first deletes the directory the others are still writing into.
+const scratch = () => (mkdirSync(DIR, { recursive: true }), DIR);
 export const cleanupReal = () => rmSync(DIR, { recursive: true, force: true });
 
 let n = 0;
@@ -39,7 +42,7 @@ export function parseJsx(code, name = 'module') {
 export async function renderZaal(src, props = {}, opts = {}) {
   const jsx = compile(src, 'jsx', opts);
   const js = esbuild.transformSync(jsx, { loader: 'jsx', jsx: 'automatic' }).code;
-  const file = join(DIR, `m${n++}.mjs`);
+  const file = join(scratch(), `m${n++}.mjs`);
   writeFileSync(file, js);
   const mod = await import(file);
   const warnings = [];

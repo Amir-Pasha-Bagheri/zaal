@@ -14,4 +14,5 @@ export { CDN, isRel, isAsset, splitSpec, pkgRef, syncDeps } from './deps.mjs';
 export { warn, pkgLine } from './log.mjs';
 export { project, build, serve, watchAndServe } from './pipeline.mjs';
 export { SRC_DIR, APP_FILE, APP_DIR, DEV_DIR, OUT_SRC, OUT_CSS, posix, rel } from './layout.mjs';
+export { STATE_DIR, readManifest, writeManifest } from './manifest.mjs';
 export { cli, loadTarget } from './cli.mjs';

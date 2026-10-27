@@ -159,4 +159,97 @@ ${[
 </html>
 `;
 
-export { router, mainFile, importMap, html };
+/* ---------- merging a hand-edited <head> ---------- */
+
+// index.html is generated every build, and it is also the one file in `application/` a
+// developer has reason to edit by hand: an analytics snippet, a favicon, meta and OG tags, a
+// font preconnect, a CSP. None of that can be said in Zaal, so overwriting it loses work with
+// nothing to show the developer why. Anything in the `<head>` this compiler did not put there
+// is carried across instead.
+
+// Splitting markup well enough to tell one `<head>` child from the next: a `>` inside an
+// attribute value does not end a tag, a comment ends at `-->`, and a `<script>` holds text
+// that is not markup. Not a parser — the only question asked of it is where each child ends.
+const RAW = /^(script|style|title|textarea)$/i;
+
+function headChildren(html) {
+  const open = /<head\b[^>]*>/i.exec(html);
+  if (!open) return null;
+  const from = open.index + open[0].length;
+  const to = html.toLowerCase().indexOf('</head', from);
+  if (to < 0) return null;
+  const inner = html.slice(from, to);
+  const out = [];
+  let i = 0;
+  while (i < inner.length) {
+    if (/\s/.test(inner[i])) { i++; continue; }
+    if (inner.startsWith('<!--', i)) {                           // a comment is one child
+      const close = inner.indexOf('-->', i + 4);
+      const end = close < 0 ? inner.length : close + 3;
+      out.push(inner.slice(i, end));
+      i = end;
+      continue;
+    }
+    const tag = /^<([A-Za-z][\w:-]*)/.exec(inner.slice(i));
+    if (!tag) {                                                  // stray text: keep it verbatim
+      const next = inner.indexOf('<', i + 1);
+      const end = next < 0 ? inner.length : next;
+      const text = inner.slice(i, end).trim();
+      if (text) out.push(text);
+      i = end;
+      continue;
+    }
+    let j = i + tag[0].length, quote = null;
+    for (; j < inner.length; j++) {
+      const c = inner[j];
+      if (quote) { if (c === quote) quote = null; }
+      else if (c === '"' || c === "'") quote = c;
+      else if (c === '>') break;
+    }
+    j = Math.min(j + 1, inner.length);
+    if (RAW.test(tag[1]) && inner[j - 2] !== '/') {               // ...and its text, to `</tag>`
+      const close = inner.toLowerCase().indexOf(`</${tag[1].toLowerCase()}`, j);
+      const gt = close < 0 ? -1 : inner.indexOf('>', close);
+      j = gt < 0 ? inner.length : gt + 1;
+    }
+    out.push(inner.slice(i, j));
+    i = j;
+  }
+  return out;
+}
+
+// Two children are the same child if they differ only in how they were wrapped: the generated
+// file re-indents, and an editor may have reflowed a long tag.
+const norm = c => c.replace(/\s+/g, ' ').trim();
+
+// Without a manifest — a project last built by an older Zaal, or one whose state directory was
+// deleted — fall back to what the generator is known to own. Everything else is the developer's.
+const owned = c => /^<meta\b[^>]*\b(charset|name=["']?viewport)/i.test(c)
+  || /^<title\b/i.test(c)
+  || /^<script\b[^>]*\btype=["']?importmap/i.test(c)
+  || (/^<link\b/i.test(c) && new RegExp(`href=["']?\\./${OUT_CSS}/`, 'i').test(c));
+
+function withHead(html, children) {
+  const open = /<head\b[^>]*>/i.exec(html);
+  const from = open.index + open[0].length;
+  const to = html.toLowerCase().indexOf('</head', from);
+  // Each child starts a line at the head's indent; a multi-line child keeps its own inner shape.
+  return `${html.slice(0, from)}\n${children.map(c => '    ' + c).join('\n')}\n  ${html.slice(to)}`;
+}
+
+// `prev` is the head the last build generated, and it is what makes this exact rather than a
+// guess: a `<link>` this build stopped emitting is in `prev`, so it goes; a `<link>` the
+// developer added never was, so it stays. Returns the head to record for next time — the
+// generated children only, so a preserved child is still preserved on the build after.
+function mergeHead(generated, existing, prev) {
+  const head = headChildren(generated) || [];
+  const was = existing == null ? null : headChildren(existing);
+  if (!was) return { html: generated, head };                    // nothing there, or no `<head>`
+  const mine = new Set(head.map(norm));
+  const last = prev ? new Set(prev.map(norm)) : null;
+  const generatedChild = c => mine.has(norm(c)) || (last ? last.has(norm(c)) : owned(c));
+  const extra = was.filter(c => !generatedChild(c));
+  return { html: extra.length ? withHead(generated, [...head, ...extra]) : generated, head };
+}
+
+export { router, mainFile, importMap, html, headChildren, mergeHead };
