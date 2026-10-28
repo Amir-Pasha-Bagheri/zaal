@@ -20,7 +20,10 @@ const decl = (prop, value) => `  ${PROP[prop] || prop}: ${tokenRef(value)};`;
 function outline(src) {
   const root = { head: '', rest: [], kids: [] };
   const stack = [{ indent: -1, node: root }];
-  for (const [i, raw] of src.split('\n').entries()) {
+  // CRLF is normalised first, before any comment is stripped: `.` does not match `\r`, so
+  // `//.*$` would fail to match at all on a CRLF line and leave the comment in place — a
+  // whole-line one then reads as an unknown directive, and a trailing one as part of the value.
+  for (const [i, raw] of src.replace(/\r\n?/g, '\n').split('\n').entries()) {
     const line = raw.replace(/(^|\s)\/\/.*$/, '').replace(/\s+$/, '');
     if (!line.trim()) continue;
     const indent = line.length - line.trimStart().length;

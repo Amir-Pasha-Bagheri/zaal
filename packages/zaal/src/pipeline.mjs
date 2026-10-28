@@ -68,7 +68,12 @@ function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR, parseApp, p
     // The rule the code generator follows: the block named after the file, or the first one if
     // none matches. Recorded in order, then resolved once the whole file has been read.
     const order = [];
-    for (const line of src.split('\n')) {
+    // The `\r` of a CRLF source is dropped before anything matches: every pattern below is
+    // anchored with `$`, and `.` does not match `\r`, so a carriage return left in place
+    // defeats the anchor and the line reads as nothing at all — a block invisible to the scan,
+    // and so a route that cannot find its component.
+    for (const raw of src.split('\n')) {
+      const line = raw.replace(/\r$/, '');
       // `C`/`S` name a component or a store and are capitalised; `H` names a hook, which React
       // requires be `use` + a capital. Three heads, so two shapes.
       const block = /^([CS])[ \t]+(\p{Lu}[\p{L}\p{N}_$]*)([ \t].*)?$/u.exec(line)

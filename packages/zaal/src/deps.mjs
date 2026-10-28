@@ -2,6 +2,7 @@
 // in one place, and the CDN url a no-install preview resolves it through.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fail } from './diagnostics.mjs';
 
 const CDN = 'https://esm.sh';
 
@@ -13,7 +14,9 @@ const isAsset = s => /\.[A-Za-z0-9]+$/.test(s) && !/\.jsx?$/.test(s);
 // `@scope/name@1.2.3/sub` -> { pkg, version, sub }
 function splitSpec(spec) {
   const m = /^(@[\w.-]+\/[\w.-]+|[\w.-]+)(?:@([^/]+))?(\/.*)?$/.exec(spec);
-  if (!m) throw new Error(`bad package specifier: ${spec}`);
+  // `fail` rather than a bare throw, so the message names the `i` line like every other one:
+  // the caller (`importLine`) has already marked the node it is compiling.
+  if (!m) fail(null, `bad package specifier: ${spec}`);
   return { pkg: m[1], version: m[2] || null, sub: m[3] || '' };
 }
 
