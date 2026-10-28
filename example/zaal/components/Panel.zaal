@@ -1,6 +1,8 @@
-// a wrapper component: `{children}` is whatever the caller nested, `actions` is markup it passed
-C Panel p:title p:actions=null
-  %card
+// a wrapper component: `{children}` is whatever the caller nested, `actions` is markup it passed.
+// `as=` names the tag, so one panel can be the page's <section>, <article> or <aside> — the kit
+// keeps the look either way.
+C Panel p:title p:actions=null p:as="section"
+  %card as={as}
     h2 "{title}"
     ?actions
       %nav

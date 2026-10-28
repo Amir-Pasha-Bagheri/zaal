@@ -82,5 +82,5 @@ npm packages.
 
 ## Status
 
-v0.1, 446 passing tests. The language is settled enough to write real apps in and not settled
+v0.1, 746 passing tests. The language is settled enough to write real apps in and not settled
 enough to promise it will not move.

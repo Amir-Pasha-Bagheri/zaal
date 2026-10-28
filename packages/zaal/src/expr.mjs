@@ -207,7 +207,9 @@ function attrParts(ctx, node) {
       continue;
     }
     const eq = a.indexOf('=');
-    const dom = /^\p{Ll}/u.test(node.tag) && !node.tag.includes('.');   // a DOM element, not a component
+    // a DOM element, not a component. A dynamic tag is unknown until it renders, and what it
+    // holds is a tag name far more often than a component, so HTML spellings still translate.
+    const dom = node.dyn || (/^\p{Ll}/u.test(node.tag) && !node.tag.includes('.'));
     if (eq < 0) { push({ k: dom && DOM_ATTR[a] || a, v: 'true' }); continue; }
     const k = a.slice(0, eq), v = a.slice(eq + 1);
     const key = ALIAS[k] || (dom && DOM_ATTR[k.toLowerCase()]) || k;

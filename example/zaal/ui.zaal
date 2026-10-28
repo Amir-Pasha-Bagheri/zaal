@@ -101,6 +101,10 @@ k card section
     border-color $color.danger
     & h2
       fg $color.danger
+  v dialog
+    maxw 24rem
+    my 0
+    shadow 0 10px 30px rgba(0, 0, 0, .25)
 
 k row form
   display flex
@@ -176,6 +180,41 @@ k counter div
 
 k spacer span
   flex 1
+
+// the compound component F4 exists for: `tablist` is the row of buttons, `tabpanel` the open
+// one's body. Both are plain kit entries — the wiring is the context, not the CSS.
+k tablist div
+  display flex
+  gap $space.1
+  border-bottom 1px solid $color.line
+
+k tab button
+  p $space.2 $space.3
+  border 0
+  border-bottom 2px solid transparent
+  bg transparent
+  fg $color.muted
+  font inherit
+  size $size.sm
+  cursor pointer
+  :hover
+    fg $color.accent
+  &[aria-selected="true"]
+    fg $color.accent
+    border-bottom-color $color.accent
+
+k tabpanel div
+  py $space.3
+
+// what a `portal` renders into: fixed to the viewport, so no ancestor's overflow can clip it
+k scrim div
+  position fixed
+  inset 0
+  display grid
+  place-items center
+  bg rgba(0, 0, 0, .45)
+  z 10
+  p $space.4
 
 k mark img
   display block

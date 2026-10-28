@@ -2,7 +2,8 @@
 // backends are meant to be two spellings of one program: any difference in what they put on
 // the page is a bug in one of them, and the only way to see it is to run both.
 import { buildSync, transformSync } from 'esbuild';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dropDir } from './scratch.mjs';
 import { join } from 'node:path';
 import { compile } from '../../zaal.mjs';
 
@@ -13,9 +14,12 @@ try {
 } catch { esbuildOk = false; }
 export const diffAvailable = Boolean(esbuildOk && server && react);
 
-const DIR = new URL('../../node_modules/.zaal-diff/', import.meta.url).pathname;
+// One directory per process: test files run in parallel, and three of them use this helper.
+// A shared directory means one file's `after` removing modules another is still writing (an
+// ENOTEMPTY, or a vanished import), and `m0.mjs` written twice at once.
+const DIR = new URL(`../../node_modules/.zaal-diff/p${process.pid}/`, import.meta.url).pathname;
 mkdirSync(DIR, { recursive: true });
-export const cleanupDiff = () => rmSync(DIR, { recursive: true, force: true });
+export const cleanupDiff = () => dropDir(DIR);
 
 let n = 0;
 

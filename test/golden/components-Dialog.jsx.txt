@@ -1,0 +1,16 @@
+import { createPortal } from 'react-dom';
+
+export default function Dialog({ title, onClose, children }) {
+  return (
+    createPortal(
+      <div className="scrim" onClick={onClose}>
+        <section className="card dialog" onClick={(e) => e.stopPropagation()}>
+          <h2>{title}</h2>
+          {children}
+          <button className="btn primary" onClick={onClose}>close</button>
+        </section>
+      </div>,
+      document.body
+    )
+  );
+}

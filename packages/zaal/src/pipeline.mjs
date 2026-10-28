@@ -54,6 +54,10 @@ function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR, parseApp, p
     .map(f => [f, readFileSync(join(root, srcDir, f), 'utf8')]));
   // Every block in zaal/, so a file referencing a component can be told which `i` line it needs.
   const stores = new Map(), comps = new Map(), hooks = new Map(), clashes = [];
+  // Where each `provide <Name>` line lives, so a file that reads the context knows which module
+  // to import `use<Name>` from. A `provide` sits inside markup rather than at the top of a file,
+  // so it is matched on its own rather than against the block the scan is in.
+  const ctxs = new Map();
   // What each store reads (`use { … } = Other`) and where it persists: the provider order has
   // to follow the first, and two stores may not share the second.
   const storeDeps = new Map(), storeKeys = new Map();
@@ -93,6 +97,17 @@ function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR, parseApp, p
         }
         continue;
       }
+      const gives = /^[ \t]+provide[ \t]+(\p{Lu}[\p{L}\p{N}_$]*)[ \t]*=/u.exec(line);
+      if (gives) {
+        const name = gives[1], prev = ctxs.get(name);
+        // One context, two files: a `use … = Name` would resolve to whichever came last, and
+        // the two `createContext` calls are two different contexts, so the hook reads null.
+        if (prev && prev !== file) {
+          clashes.push(`provide ${name} is in both ${prev}.zaal and ${file}.zaal`
+            + ` — two contexts of one name, and a consumer can only read one of them`);
+        }
+        ctxs.set(name, prev && prev !== file ? prev : file);
+      }
       if (!current || !/^[ \t]/.test(line)) { if (!/^[ \t]/.test(line) && line.trim()) current = null; continue; }
       const reads = /^[ \t]+use\b.*=[ \t]*(\p{Lu}[\p{L}\p{N}_$]*)[ \t]*$/u.exec(line);
       if (reads) storeDeps.get(current).add(reads[1]);
@@ -109,7 +124,7 @@ function project({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR, parseApp, p
     }
     sharing.set(key, name);
   }
-  return { app, appSrc, ui, sources, stores, comps, hooks, clashes, storeDeps, storeKeys };
+  return { app, appSrc, ui, sources, stores, comps, hooks, ctxs, clashes, storeDeps, storeKeys };
 }
 
 // Compile a project and write it out. `framework` is the target (`@zaal/react`, `@zaal/vue`, …);
@@ -124,7 +139,7 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
       + ` ${framework.name} has ${Object.keys(framework.backends).join(', ')}`);
   }
   const { ext, outDir } = be;
-  const { app, appSrc, ui, sources, stores, comps, hooks, clashes, storeDeps = new Map() } =
+  const { app, appSrc, ui, sources, stores, comps, hooks, ctxs, clashes, storeDeps = new Map() } =
     project({ root, appFile, srcDir, parseApp: framework.parseApp, parseUI: framework.parseUI });
   const made = [], used = new Map(), pkgs = new Map(), assets = new Set();
   inFile(appSrc, appFile, () => { for (const r of app.routes) {
@@ -141,8 +156,8 @@ function build({ root = '.', appFile = APP_FILE, srcDir = SRC_DIR,
     const path = f.replace(/\.zaal$/, '');
     const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
     const code = inFile(src, join(srcDir, f), () => framework.compile(src, backend,
-      { ui, used: seen, pkgs, pins: app.pins, cdn: app.cdn, stores, comps, hooks, dir, assets,
-        main: basename(path) }));
+      { ui, used: seen, pkgs, pins: app.pins, cdn: app.cdn, stores, comps, hooks, ctxs, dir,
+        assets, main: basename(path) }));
     files.set(`${OUT_SRC}/${path}${ext}`, code);
     for (const c of seen) if (!used.has(c)) used.set(c, f);
     made.push(`${OUT_SRC}/${path}${ext}`);

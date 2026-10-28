@@ -6,7 +6,7 @@ agent has to be told about); a feature is worth adding when the Zaal form is mat
 than the React it replaces and needs no explanation. Anything that makes a `.zaal` file longer
 than the JSX it compiles to is the wrong answer.
 
-Status: SPEC.md is fully implemented (656 tests pass). Everything below is beyond the spec.
+Status: SPEC.md is fully implemented (746 tests pass). Everything below is beyond the spec.
 
 ## Part 1 — gaps (wrong or missing in what Zaal already claims) — **done**
 
@@ -149,6 +149,51 @@ thing against the DSL is what finds them.
   a block was invisible to it. It now asks `codeOf` where a node keeps code, one node at a time,
   and counts a block's own `p:`/`s:`/hook-line names as in scope.
 
+## Part 1i — what testing F2 turned up
+
+30 specs for dynamic tags, and the generator widened to emit them, found two bugs in the
+feature's own neighbourhood and two in the harness.
+
+- [x] **`as=` twice took the first and made the second a prop.** `div as=section as=article`
+  became `<section as={article}>` — an undefined `article` in the browser. Every other repeated
+  attribute is an error, and so is this one now.
+- [x] **The esm backend put a key inside the tag expression.** `withKey` found the props of a
+  call it had already written with `^h\((.+?), (null|\{ ?)`, and a tag that is an expression
+  can hold both of those: `h(f(r, null, 1), null, …)` keyed `f`'s own argument list. The scan
+  is bracket-aware now.
+- [x] **`differs` reads a program neither backend accepts as "not a difference"** — right for a
+  hand-written case, and a silent hole for a generated one: the first version of the dynamic-tag
+  generator emitted `as=Which` (a *state* name, so a build error) and 22 of 400 seeds quietly
+  tested nothing. `test/differential.test.mjs` now compiles every generated program and fails
+  if one does not.
+- [x] **Three test files shared one scratch directory.** `.zaal-diff`, `.zaal-test` and
+  `.zaal-dom` were each one directory for the whole suite, with a per-process `m0.mjs` counter
+  and an `after` that removed the lot — so one file's cleanup raced another file's writes
+  (`ENOTEMPTY`, or a module that vanished mid-import) and two processes could write one path.
+  Each process now has its own (`test/helpers/scratch.mjs`).
+
+## Part 1j — what testing F3 turned up
+
+20 specs for `portal`, and the one divergence they caught was between the two backends rather
+than in either of them.
+
+- [x] **A keyed portal went two different ways.** Inside a `*` line the jsx backend passed the
+  key as `createPortal`'s third argument while the esm backend wrapped the call in a keyed
+  `Fragment` — both correct React, two different trees, and exactly the kind of drift Part 1e's
+  differential testing exists to stop. (The generator cannot cover portals: `react-dom/server`
+  has neither portals nor a `document`, so the differential oracle would only see both backends
+  throw.) Both now hand the key to `createPortal`.
+- The specs also pinned two things that are React's behaviour and not Zaal's, because both look
+  like compiler bugs from the outside: a selector target is read **while the component renders**,
+  so a host the same tree is about to render is not there yet (`Target container is not a DOM
+  element`), and sibling portals sharing one container are **not reordered** when their list is —
+  each one appends into the container on its own, so the keys keep each item's node and content
+  while the DOM order stays the insertion order.
+
+The harness grew a portal with them: the tiny React now implements `createPortal`, collecting
+what a portal renders into `app.portals`/`app.portalTargets` rather than into the page's own
+html, and `env.mjs` has a `document.body` and a `querySelector` for a target to resolve to.
+
 ## Part 2 — features (React surface Zaal cannot say)
 
 - [x] **F1. Custom hook blocks.** `H useName` — a component with no markup and a value instead:
@@ -162,9 +207,45 @@ thing against the DSL is what finds them.
   fetch/status/list logic out of `C Dex`, whose body is now two `use` lines. 54 specs — every
   hook head inside an `H` block, both backends compared through the differential oracle, real
   React, and a real DOM for effects, cleanup on unmount and StrictMode.
-- [ ] **F2. Dynamic / polymorphic tags.** `{Tag}` as an element, an `as=` prop.
-- [ ] **F3. Portals.** A `portal` head, rather than a manual `createPortal` expression child.
-- [ ] **F4. Own contexts.** `ctx` reads one; only `S` creates one. No `createContext` form.
+- [x] **F2. Dynamic / polymorphic tags.** `{Tag}` as an element, `as=` as the tag. A `{expr}`
+  head that carries an attribute, inline text or children is the element whose tag the
+  expression names (a bare one is still an expression child — `{children}` depends on it), and
+  `as=` names the tag on anything that is not already a component: `.card as=section`,
+  `%btn as=a` (the kit keeps the classes), `.row as={tag}`. On a component, a member tag or a
+  dynamic tag, `as` stays the ordinary prop most of npm reads it under. Case decides a bare
+  value as it does everywhere else — `as=section` is the tag, `as=Link` is the component, in
+  scope on sight. The escape hatch this closes: a wrapper that renders the tag it is told to
+  used to be hand-written JSX, and `as=section` compiled to `as={section}` — a ReferenceError
+  in the browser. `example/zaal/components/Panel.zaal` is the first use: one panel, and the
+  page says whether it is a `<section>` or an `<article>`. 30 specs, plus the generator now
+  emits dynamic tags, so 2000 differential programs cover them.
+- [x] **F3. Portals.** A `portal` head: the markup under it renders into another node, with
+  `createPortal` and its react-dom import written for you. The target is optional
+  (`document.body`), a selector string (`portal "#modal-root"` → `querySelector`) or any
+  expression (`portal host.current`). A portal is ordinary markup — a component's root, a
+  sibling, a `slot` fill, holding a `?` or a `*` — and a `*` line keys it through
+  `createPortal`'s third argument, which is the one place the two backends had to be taught the
+  same route. The escape hatch it closes: a modal meant a hand-written `{createPortal(…)}`
+  child, with the import and the JSX written out. `example/zaal/components/Dialog.zaal` is the
+  first one, opened from `pages/Home.zaal`. 20 specs, including a real DOM (the markup lands on
+  `document.body` and not in `#root`, `stopPropagation` on the card, unmount, a portal per list
+  item) and React's own answer to a selector that is not in the page yet.
+- [x] **F4. Own contexts.** `provide Name = <value>` — a markup line that declares a context and
+  fills it, so the value belongs to one *instance* of a component rather than to the app. That is
+  the thing `S` structurally cannot do: one store provider wraps everything, so every `<Tabs>` on
+  a page would share one open tab. The name is capitalised like a block's and becomes
+  `<Name>Context` + `use<Name>()`, both exported, so `use { open } = Tabs` reads it from any file
+  with the import written for you — the same line a store is read with, because from a consumer
+  the two are the same thing. One `createContext` per name per file however many lines hand it
+  out; otherwise it is ordinary markup (a root, a sibling, inside a `?`, keyed by a `*`, nested).
+  The value is the expression as written: no `useMemo` is added, because hoisting one out of a
+  line that may sit under a `?` would be a conditional hook — a `memo` line is how a block asks
+  for a stable value, and it already infers its own dependencies. The escape hatch this closes:
+  a compound component meant a hand-written `createContext` in a `js` line and a `<Ctx.Provider>`
+  markup could not say at all. `example/zaal/components/Tabs.zaal` is the first one, on the About
+  page. 33 specs — both backends through the differential oracle, real React, and a real DOM for
+  two instances keeping their own value, nesting, and the throw outside a provider; the generator
+  emits `provide` too, so 2000 differential programs cover it.
 - [ ] **F5. Event ergonomics.** No `.prevent` / `.stop` modifiers, no `@key.enter`; `EV`
   (`packages/zaal/src/expr.mjs`) names 9 events and guesses the rest.
 - [ ] **F6. Router depth.** A flat hash router: no history/pathname mode, nested layouts,
@@ -189,6 +270,29 @@ thing against the DSL is what finds them.
   calls inside a promise chain (see `zaal/pages/Dex.zaal`): state assignment only rewrites at the
   top level of a statement. A `load` or `async` line that owns the loading/error/data triple
   would cut the most verbose thing in the example by half.
+
+## Part 1k — what testing F4 turned up
+
+33 specs for `provide`, and the generator widened to emit it, found two bugs in the feature and
+one older one in an oracle.
+
+- [x] **An object literal was unwrapped into a bare expression.** The provider was first written
+  by desugaring the line into an element with a `value=` attribute, which put the value through
+  the *attribute* path — where `unbrace` reads `{ v }` as the `k={expr}` habit and strips the
+  braces. `provide Box = { v }` handed descendants `v` itself, and `provide G = { name, n, setN }`
+  handed them `setN` (a comma expression). The value is an expression the way a hook line's is,
+  not an attribute value, so both backends now write the provider out rather than desugaring it.
+- [x] **A keyed `provide` went two different ways** — the same divergence as Part 1j's keyed
+  portal, in the same place. The jsx backend collapsed a lone keyed child using `KEYED` while the
+  esm backend used `PLAIN`, which has no provider in it, so `*rows as r k=r.id` over a `provide`
+  keyed the Provider in one backend and wrapped it in a keyed `Fragment` in the other. The esm
+  collapse now reads the same set.
+- [x] **`checkJsx` never saw an opening `<>`.** `tags()` skipped a `<` with no name as `a < b`,
+  so a fragment was not a tag — and the text scan then read everything from the previous
+  component's last tag up to it as children and reported the `<` it had just skipped. Nothing to
+  do with `provide`: any file whose second component's root is a fragment hit it. An oracle that
+  rejects programs it should pass is as bad as one that passes programs it should reject, and
+  this one had been quietly doing the first.
 
 ## Part 1e — the oracles
 

@@ -1,0 +1,9 @@
+// a modal: `portal` renders the markup on document.body instead of here, so no ancestor's
+// overflow, transform or z-index can clip it — the one thing nesting cannot do
+C Dialog p:title p:onClose
+  portal
+    .scrim @click=onClose
+      %card.dialog @click=e.stopPropagation()
+        h2 "{title}"
+        {children}
+        %btn.primary @click=onClose "close"

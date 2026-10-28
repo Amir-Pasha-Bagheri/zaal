@@ -19,11 +19,27 @@ function importBinds(n) {
 function compRefs(node, out = new Map()) {
   if (RAW_BODY.has(node.kind)) return out;               // a hook body is JS, not markup
   // `Dialog.Panel` is a reference to `Dialog`: that is the name an `i` line has to bring in.
-  const base = node.kind === 'el' ? node.tag.split('.')[0] : null;
+  // A dynamic tag (`{Tag}`, `as={expr}`) is an expression, and an expression is no more checked
+  // here than `{items.length}` is — most of them name a prop the block takes.
+  const base = node.kind === 'el' && !node.dyn ? node.tag.split('.')[0] : null;
   if (base && /^\p{Lu}/u.test(base) && !out.has(base)) out.set(base, node);
   for (const k of node.kids || []) compRefs(k, out);
   return out;
 }
+
+// Every `provide Name = …` line in the file, wherever in the markup it sits. The name is the
+// context's, and one name may be provided by several lines (two components handing out the same
+// context, or one doing it in both arms of a `?`) — so it is the *names* that are collected,
+// each with the first line that asked for it to report against.
+function provideNames(node, out = new Map()) {
+  if (RAW_BODY.has(node.kind)) return out;
+  if (node.kind === 'provide' && !out.has(node.name)) out.set(node.name, node);
+  for (const k of node.kids || []) provideNames(k, out);
+  return out;
+}
+
+// What a `provide Name` line makes the module declare.
+const provideBinds = name => [`${name}Context`, `use${name}`];
 
 // Names a module already has: an `i` import, or anything a top-level `js` line declares. A spread
 // of one of these is ordinary code, not a component taking rest props.
@@ -83,6 +99,13 @@ function declaredOnce(ast) {
       for (const b of jsDeclared(n)) claim(b, n, 'a `js` line');
     }
   }
+  // A `provide` line is nested in markup rather than at the top level, but what it writes is
+  // top-level all the same: `TabsContext` and `useTabs`. Claimed once per name — providing one
+  // context from two places in a file is one declaration, and `S Tabs` beside `provide Tabs`
+  // is two.
+  for (const [name, at] of provideNames(ast)) {
+    for (const b of provideBinds(name)) claim(b, at, `\`provide ${name}\``);
+  }
 }
 
 // const/let/var/function/class at the top level of a `js` block.
@@ -102,6 +125,7 @@ function boundNames(ast) {
     if (n.kind === 'import') for (const b of importBinds(n)) out.add(b);
     else if (n.kind === 'comp' || n.kind === 'store' || n.kind === 'hookdef') out.add(n.name);
   }
+  for (const name of provideNames(ast).keys()) for (const b of provideBinds(name)) out.add(b);
   return out;
 }
 
@@ -165,10 +189,11 @@ function blockNames(ast) {
 // The same guarantee `checkComponents` gives a tag, for a call: a custom hook has to be in
 // scope. React's own hooks are imported on sight and a store brings its own `use<Name>`, so what
 // is left is a hook some `H` block declared — and an `i` line is what reaches it.
-function checkHooks(ast, hooks = new Map(), stores = new Map(), dir = '') {
+function checkHooks(ast, hooks = new Map(), stores = new Map(), dir = '', ctxs = new Map()) {
   const bound = new Set([...boundNames(ast), ...moduleScope(ast), ...blockNames(ast),
     ...REACT_HOOKS, ...ROUTER_EXPORTS]);
   for (const name of stores.keys()) bound.add(`use${name}`);
+  for (const name of ctxs.keys()) bound.add(`use${name}`);
   for (const [name, at] of hookRefs(ast)) {
     if (bound.has(name)) continue;
     const hit = hooks.has(name) ? name : nearest(name, [...hooks.keys(), ...bound]);
@@ -190,4 +215,4 @@ function linkUI(node, ui, used) {
 }
 
 export { importBinds, compRefs, moduleScope, jsNames, importHint, boundNames, blockNames,
-  checkComponents, hookRefs, checkHooks, linkUI, declaredOnce };
+  checkComponents, hookRefs, checkHooks, linkUI, declaredOnce, provideNames, provideBinds };

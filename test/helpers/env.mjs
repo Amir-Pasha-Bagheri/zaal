@@ -47,10 +47,18 @@ export function installEnv({ hash = '#/', fetch: fetchImpl = cannedFetch } = {})
   };
 
   const container = { __render: null };
+  // What a `portal` renders into. The tiny renderer never touches a real node — it only has to
+  // be able to tell one container from another — so a selector resolves to a stable stand-in.
+  const hosts = new Map();
   const doc = {
     title: '',
     documentElement: { dataset: {} },
+    body: { __node: 'body' },
     getElementById: id => (container.id = id, container),
+    querySelector: sel => {
+      if (!hosts.has(sel)) hosts.set(sel, { __node: sel });
+      return hosts.get(sel);
+    },
     addEventListener: win.addEventListener,
     removeEventListener: win.removeEventListener,
   };

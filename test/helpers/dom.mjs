@@ -5,15 +5,16 @@
 // Sources are compiled, bundled by esbuild and evaluated in jsdom, which is as close to a
 // browser as the suite can get without one.
 import { buildSync } from 'esbuild';
-import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dropDir } from './scratch.mjs';
 import { join } from 'node:path';
 
 let jsdom = null, ok = true;
 try { jsdom = await import('jsdom'); } catch { ok = false; }
 export const domAvailable = ok && Boolean(jsdom);
 
-const DIR = new URL('../../node_modules/.zaal-dom/', import.meta.url).pathname;
-export const cleanupDom = () => rmSync(DIR, { recursive: true, force: true });
+const DIR = new URL(`../../node_modules/.zaal-dom/p${process.pid}/`, import.meta.url).pathname;
+export const cleanupDom = () => dropDir(DIR);
 
 let n = 0;
 

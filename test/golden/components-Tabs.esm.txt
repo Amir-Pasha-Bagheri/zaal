@@ -1,0 +1,19 @@
+import { useState, useMemo, useContext, createContext, createElement as h, Fragment as F } from 'react';
+
+export const TabsContext = createContext(null);
+
+export function useTabs() {
+  const value = useContext(TabsContext);
+  if (!value) throw new Error('useTabs() used outside a `provide Tabs`');
+  return value;
+}
+
+export default function Tabs({ labels, children }) {
+  const [open, setOpen] = useState(0);
+  const tabs = useMemo(() => ({ open, setOpen }), [open]);
+  return h(TabsContext.Provider, { value: tabs }, h("div", null, h("div", { "className": "tablist" }, labels.map((label, i) => h("button", { key: i, "className": "tab", "onClick": () => setOpen(i), "aria-selected": open == i }, label))), children));
+}
+export function Tab({ at, children }) {
+  const { open } = useTabs();
+  return open == at ? h("div", { "className": "tabpanel" }, children) : null;
+}

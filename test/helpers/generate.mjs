@@ -25,12 +25,18 @@ const WORDS = ['alpha', 'beta', 'gamma', 'total', 'items', 'ok', 'no'];
 const STATE = [
   's:n=3', 's:flag=true', 's:label="hi"',
   's:items=[{id:1,t:"a"},{id:2,t:"b"},{id:3,t:"c"}]',
+  // a tag held in state, for the dynamic-tag shapes (F2): one host tag and one component
+  's:tag="section"', 's:Which=Item',
 ];
 const SCALARS = ['n', 'label', 'flag'];
 const TESTS = ['flag', 'n > 1', 'n == 0', 'items.length', 'label == "hi"'];
 
 export function generate(seed) {
   const r = rng(seed);
+  // Whether this program handed out a context, so the consumer component is declared only when
+  // something above it provides one — a `use … = Ctx` with no `provide Ctx` is a build error,
+  // and a program that does not compile tests nothing.
+  let gave = false;
   const pick = xs => xs[Math.floor(r() * xs.length)];
   const chance = p => r() < p;
 
@@ -56,8 +62,8 @@ export function generate(seed) {
   // one markup line plus its children, at `indent`
   const node = (indent, depth, vars) => {
     const pad = '  '.repeat(indent);
-    const kind = depth <= 0 ? pick(['text', 'expr', 'el', 'void'])
-      : pick(['el', 'el', 'text', 'expr', 'if', 'map', 'void', 'comp']);
+    const kind = depth <= 0 ? pick(['text', 'expr', 'el', 'void', 'dyn'])
+      : pick(['el', 'el', 'text', 'expr', 'if', 'map', 'void', 'comp', 'dyn', 'dyn', 'give']);
 
     if (kind === 'text') return `${pad}${text(vars)}\n`;
     if (kind === 'expr') return `${pad}{${pick([...vars, ...EXPRS])}}\n`;
@@ -65,6 +71,30 @@ export function generate(seed) {
     if (kind === 'comp') {
       const key = chance(0.5) ? ` k=x.id` : '';
       return `${pad}*items as x${key}\n${'  '.repeat(indent + 1)}Item t=x.t n=${pick(['n', '1', 'items.length'])}\n`;
+    }
+
+    // `{tag}` / `{Which}` as the element, and `as=` as the tag: the jsx backend writes the
+    // first as JSX and the rest as `createElement`, so only this says the two still agree.
+    if (kind === 'dyn') {
+      if (chance(0.25)) {
+        // `as=Item` names a component in scope; `as=Which` would name a *state*, which is a
+        // build error — and a program that does not compile is one this suite never renders.
+        return `${pad}${pick(TAGS)} as=${pick(['span', '{tag}', 'Item', '{flag ? "b" : "i"}'])}`
+          + `${attrs(vars)} ${text(vars)}\n`;
+      }
+      const head = `${pad}{${pick(['tag', 'Which', 'flag ? "b" : "i"'])}}${attrs(vars)}`;
+      if (chance(0.3)) return `${head} ${text(vars)}\n`;
+      return `${head}\n` + kids(indent + 1, depth - 1, vars, 1);
+    }
+
+    // `provide Ctx = …` (F4) — the provider is an element in both backends, and a consumer
+    // directly under it reads the value. The value is always an object literal: `use<Name>()`
+    // throws on a falsy one, and the braces are the shape the attribute path used to unwrap.
+    if (kind === 'give') {
+      gave = true;
+      const value = pick(['{ t: label, n }', '{ t: "x", n: items.length }', '{ t: label, n: n - 3 }']);
+      const reader = chance(0.5) ? `${'  '.repeat(indent + 1)}Reader\n` : '';
+      return `${pad}provide Ctx = ${value}\n` + reader + kids(indent + 1, depth - 1, vars);
     }
 
     if (kind === 'if') {
@@ -97,9 +127,11 @@ export function generate(seed) {
   const vars = [...SCALARS];
   // a child component, so the generated tree is not all host elements
   const item = `C Item p:t p:n=0\n  span.item\n    "{t}"\n    ?n > 1\n      b "{n}"\n`;
-  const head = `${item}C App ${STATE.join(' ')}\n`;
+  // a consumer of whatever a `provide` line in the body handed out
+  const reader = `C Reader\n  use { t, n } = Ctx\n  span.r "{t}" "{n}"\n`;
   const roots = 1 + Math.floor(r() * 2);
   let body = '';
   for (let i = 0; i < roots; i++) body += node(1, 2 + Math.floor(r() * 2), vars);
-  return head + body;
+  // after the body: only it knows whether a context was provided.
+  return `${item}${gave ? reader : ''}C App ${STATE.join(' ')}\n` + body;
 }

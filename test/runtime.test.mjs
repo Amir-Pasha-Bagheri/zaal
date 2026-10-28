@@ -128,10 +128,23 @@ test('the router renders the route for the hash, and navigation swaps pages', as
 
 test('Panel: {children} and a `slot` prop both render', async () => {
   const { app } = await runProject(exampleDir(), { hash: '#/about' });
-  assert.match(app.html, /<section class="card"><h2>About<\/h2>/);
+  // the page asked for `as="article"`; the kit still supplies the class, the tag is the prop
+  assert.match(app.html, /<article class="card"><h2>About<\/h2>/);
   assert.match(app.html, /<nav class="nav"><a href="#\/">back home<\/a><\/nav>/, 'the actions slot');
   assert.match(app.html, /renders whatever the caller nested/, 'the nested children');
   assert.match(app.html, /\{children\}/, 'escaped braces render as literal text');
+});
+
+test('Dialog: a `portal` renders outside the page tree and closes again', async () => {
+  const { app, env } = await runProject(exampleDir(), { hash: '#/' });
+  assert.equal(app.portals, '', 'nothing is portalled until it is opened');
+  app.fire('about this page');
+  assert.match(app.portals, /<div class="scrim"[\s\S]*About this page/);
+  assert.match(app.portals, /renders on document\.body/);
+  assert.deepEqual(app.portalTargets, [env.document.body], 'onto document.body');
+  assert.doesNotMatch(app.html, /scrim/, 'and not into the page it was written in');
+  app.fire('close');
+  assert.equal(app.portals, '');
 });
 
 /* ---------- features the example does not use ---------- */

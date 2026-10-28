@@ -129,9 +129,9 @@ test('the example project builds the jsx deliverable with no warnings', () => {
   // the jsx tree is the same shape, with .jsx modules
   assert.deepEqual(tree(root, 'application/src'), [
     'components/Badge.jsx', 'components/Boom.jsx', 'components/Counter.jsx',
-    'components/Field.jsx', 'components/Item.jsx', 'components/Nav.jsx', 'components/Oops.jsx',
+    'components/Dialog.jsx', 'components/Field.jsx', 'components/Item.jsx', 'components/Nav.jsx', 'components/Oops.jsx',
     'components/Panel.jsx', 'components/Sparkline.jsx', 'components/Spinner.jsx',
-    'components/TodoList.jsx', 'data/dex.jsx', 'hooks/useDex.jsx', 'img/logo.png', 'main.jsx',
+    'components/Tabs.jsx', 'components/TodoList.jsx', 'data/dex.jsx', 'hooks/useDex.jsx', 'img/logo.png', 'main.jsx',
     'pages/About.jsx', 'pages/Dex.jsx', 'pages/Home.jsx', 'pages/NotFound.jsx', 'pages/Pokemon.jsx',
     'pages/Stats.jsx', 'router.jsx', 'stores/Caught.jsx', 'stores/Theme.jsx',
     'stores/Todos.jsx', 'styles/extra.css', 'styles/ui.css',

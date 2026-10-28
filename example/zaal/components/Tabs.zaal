@@ -1,0 +1,20 @@
+// a compound component: `provide` hands the open tab to every <Tab> under it, however deep.
+// A store could not do this — one `S` provider wraps the whole app, so every <Tabs> on the
+// page would share one open tab. This context belongs to *this* <Tabs>, and each one has its
+// own. The value is a `memo` line so consumers only re-render when it really changed.
+C Tabs p:labels s:open=0
+  memo tabs = { open, setOpen }
+  provide Tabs = tabs
+    div
+      %tablist
+        *labels as label
+          %tab @click=setOpen(i) aria-selected={open == i} "{label}"
+      {children}
+
+// `at` is which tab this panel belongs to; the open one comes from the <Tabs> above it, with
+// no prop threaded through whatever markup sits in between.
+C Tab p:at
+  use { open } = Tabs
+  ?open == at
+    %tabpanel
+      {children}

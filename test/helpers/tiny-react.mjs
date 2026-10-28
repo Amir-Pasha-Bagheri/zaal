@@ -10,6 +10,14 @@ export const StrictMode = Symbol.for('zaal.test.StrictMode');
 export const Profiler = Symbol.for('zaal.test.Profiler');
 export const Suspense = Symbol.for('zaal.test.Suspense');
 
+// `createPortal(markup, container, key)` — the children render into another node, so they are
+// not part of the tree's own html. The renderer collects them separately (`app.portals`) and
+// still records their host elements, so `find`/`fire` reach what a modal puts on the page.
+export const PORTAL = Symbol.for('zaal.test.Portal');
+
+export const createPortal = (children, container, key = null) =>
+  ({ $$: 'el', type: PORTAL, props: { children, container }, key });
+
 export function createElement(type, props, ...kids) {
   const p = { ...(props || {}) };
   if (kids.length) p.children = kids.length === 1 ? kids[0] : kids;
@@ -229,6 +237,13 @@ function render(node, path) {
   if (type === Fragment || type === StrictMode || type === Profiler || type === Suspense) {
     return renderKids(props.children, key);
   }
+  // A portal renders where its container is, not where it was written: its markup lands in
+  // `portals` and nothing is left behind in the html at this position.
+  if (type === PORTAL) {
+    if (!props.container) throw new Error('createPortal: target container is not a DOM element');
+    portals.push({ container: props.container, html: renderKids(props.children, key) });
+    return '';
+  }
   if (typeof type === 'string') {
     strictDom(type, props);
     const el = { tag: type, props, text: '' };
@@ -287,11 +302,12 @@ function runEffects() {
   }
 }
 
-let html = '';
+let html = '', portals = [];
 
 function pass() {
   rendering = true;
   nodes = [];
+  portals = [];
   try { html = render(root, '0'); } finally { rendering = false; }
   runEffects();
 }
@@ -316,6 +332,8 @@ export function mount(element) {
 
 const handle = () => ({
   get html() { return html; },
+  get portals() { return portals.map(p => p.html).join(''); },
+  get portalTargets() { return portals.map(p => p.container); },
   get nodes() { return nodes; },
   find: pred => nodes.find(typeof pred === 'function' ? pred : n => n.text.trim() === pred),
   all: pred => nodes.filter(typeof pred === 'function' ? pred : n => n.text.trim() === pred),
@@ -336,7 +354,7 @@ export function reset() {
   typeIds = new WeakMap(); nextType = 0;
   for (const c of cleanups.values()) c?.();
   cleanups = new Map();
-  effects = []; nodes = []; html = ''; root = null; dirty = false;
+  effects = []; nodes = []; html = ''; portals = []; root = null; dirty = false;
 }
 
 /* ---------- react-dom/client ---------- */
@@ -345,4 +363,5 @@ export const createRoot = container => ({
   render(element) { container.__render(element); },
 });
 
-export default { createElement, Fragment, memo, createContext, Component, StrictMode, Suspense };
+export default { createElement, createPortal, Fragment, memo, createContext, Component,
+  StrictMode, Suspense };

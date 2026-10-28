@@ -121,7 +121,42 @@ function lineNode(t) {
     return { kind: 'map', list, item, key: key ? key.slice(2) : null };
   }
   if (head.startsWith('"')) return { kind: 'text', value: head.slice(1, -1) };
-  if (head.startsWith('{') && head.endsWith('}')) return { kind: 'expr', code: head.slice(1, -1) };
+  // `{expr}` — an expression child, or a **dynamic tag** when the line carries anything else:
+  // `{Tag} c="row" "hi"` is the element whose tag the expression names. Without this the rest of
+  // the line (and any children under it) were dropped without a word.
+  if (head.startsWith('{') && head.endsWith('}')) {
+    const code = head.slice(1, -1);
+    if (t.length > 1) return dynEl(code, attrList(t.slice(1)));
+    return { kind: 'expr', code };
+  }
+  // `portal` — markup that renders somewhere else in the document: a modal, a tooltip, a
+  // toast. The target is optional (`document.body`), a selector string, or any expression.
+  if (head === 'portal') {
+    const rest = attrList(t.slice(1));
+    if (rest.length > 1) {
+      throw new Error('portal: one target — `portal`, `portal box.current` or `portal "#overlay"`');
+    }
+    return { kind: 'portal', to: rest[0] ?? null, target: portalTarget(rest[0]) };
+  }
+  // `provide Name = value` — a context declared and filled right where it is used: everything
+  // under the line reads the value. `S` is app-wide state with one provider at the root; this
+  // is the other half, a value a component *instance* hands its own descendants — which is what
+  // a <Tabs> telling its panels which one is open needs, and what `S` cannot say.
+  if (head === 'provide') {
+    const [lhs, rhs] = splitAssign(t.slice(1).join(' '));
+    if (!lhs) throw new Error('provide: expected `provide <Name> = <value>`');
+    // The name becomes `<Name>Context` and `use<Name>()`, and React reads a lower-case name as
+    // neither — the same rule a `C` block's name follows, for the same reason.
+    if (!CAPITAL.test(lhs)) {
+      throw new Error(`provide ${lhs}: a context's name has to start with a capital letter`
+        + ' and be a name');
+    }
+    if (!rhs) {
+      throw new Error(`provide ${lhs}: expected \`provide ${lhs} = <value>\``
+        + ' — the value its descendants read');
+    }
+    return { kind: 'provide', name: lhs, expr: rhs };
+  }
   if (head === 'slot') {                            // markup passed as a prop, not as a child
     if (!IDENT.test(t[1] || '')) throw new Error('slot: expected `slot <propName>`');
     return { kind: 'slot', name: t[1] };
@@ -193,6 +228,85 @@ function memberTags(node, scope) {
   for (const k of node.kids || []) memberTags(k, scope);
 }
 
+// A dynamic tag: the tag is an expression rather than a name, so no selector was read and
+// there are no classes to carry. `dyn` is what both backends key off — JSX can only name a tag.
+const dynEl = (code, attrs) => ({ kind: 'el', tag: code.trim(), dyn: true, classes: [], id: null, attrs });
+
+// JSX can write `<Tag>` and `<icons.Star>`; anything else — a lower-case name, a ternary, a
+// call — is not a tag JSX can name, and has to go through `createElement`.
+const JSX_TAG = /^(?:\p{Lu}[\p{L}\p{N}_$]*|[\p{L}_$][\p{L}\p{N}_$]*(?:\.[\p{L}\p{N}_$]+)+)$/u;
+// A literal tag name, as `as=` may give one: `section`, `my-widget`. Lower-case, the way a tag
+// is everywhere else in Zaal.
+const TAG_NAME = /^\p{Ll}[\p{L}\p{N}_$]*(?:-[\p{L}\p{N}_$]+)*$/u;
+
+// `k={expr}` is the JSX habit; take either. (expr.mjs does the same for attribute values, but
+// it imports from here, so this stays its own three lines.)
+function unwrap(v) {
+  if (!v.startsWith('{') || !v.endsWith('}')) return v;
+  let depth = 0;
+  for (let i = 0; i < v.length; i++) {
+    if (v[i] === '{') depth++;
+    else if (v[i] === '}' && --depth === 0 && i !== v.length - 1) return v;
+  }
+  return v.slice(1, -1).trim();
+}
+
+// `as=` names the tag, not a prop: `.card as=section`, `%btn as=a`, `.row as={Tag}`. On a
+// component (or on a tag that is already an expression) `as` stays an ordinary prop — that is
+// the name styled-components, Radix and most of npm read it under, and taking it would break
+// them. Case decides a bare value, as it does everywhere else: `as=section` is the tag
+// `<section>`, `as=Link` is the component, and a variable holding either is `as={tag}`.
+function asTag(node) {
+  const i = node.attrs.findIndex(a => a.startsWith('as='));
+  if (i < 0) return;
+  if (node.dyn || /^\p{Lu}/u.test(node.tag) || node.tag.includes('.')) return;
+  const v = node.attrs[i].slice(3).trim();
+  if (!v) fail(node, 'as=: nothing to be — write `as=section`, `as=Link` or `as={expr}`');
+  // One tag per element: a second `as=` would be dropped, the way any repeated attribute is.
+  if (node.attrs.some((a, j) => j > i && a.startsWith('as='))) {
+    fail(node, `as is set twice on <${node.tag}> — an element has one tag`);
+  }
+  node.attrs.splice(i, 1);
+  if (v.startsWith('"')) {
+    const name = v.slice(1, -1);
+    if (!TAG_NAME.test(name)) fail(node, `as="${name}": not a tag name`);
+    node.tag = name;
+    return;
+  }
+  if (TAG_NAME.test(v) || JSX_TAG.test(v)) { node.tag = v; return; }
+  node.tag = unwrap(v);
+  node.dyn = true;
+  if (!node.tag) fail(node, 'as=: nothing to be — write `as=section`, `as=Link` or `as={expr}`');
+}
+
+// Where a `portal` renders. No target is `document.body` — the one node every page has. A
+// quoted target is a CSS selector, the way React code reaches a `#modal-root`; anything else is
+// an expression, so a ref (`portal box.current`) or a prop is written as it stands.
+function portalTarget(to) {
+  if (!to) return 'document.body';
+  if (!to.startsWith('"')) return unwrap(to);
+  const sel = to.slice(1, -1);
+  if (!sel.trim()) throw new Error('portal "": a target selector, or nothing for document.body');
+  return `document.querySelector(${JSON.stringify(sel)})`;
+}
+
+// After the kit is linked: resolve `as=`, and turn a `{expr}` line that has children under it
+// into the dynamic element it reads as (the head alone could not know — the children arrive
+// after it). A dynamic tag with no expression is a build error rather than an empty `{}`.
+function polyTags(node) {
+  if (node.kind === 'expr' && node.kids.length) {
+    const code = node.code;
+    delete node.code;
+    Object.assign(node, dynEl(code, []), { kids: node.kids, ln: node.ln, raw: node.raw });
+  }
+  if (node.kind === 'el') {
+    asTag(node);
+    if (node.dyn && !node.tag) fail(node, '`{}` is not a tag — a dynamic tag needs an expression');
+  }
+  for (const k of node.kids || []) polyTags(k);
+  return node;
+}
+
 function hookNode(hook, mod, rest) {
   const deps = !mod ? 'auto' : mod === '!' ? [] : mod === '*' ? null : tokens(mod.slice(1, -1).replace(/,/g, ' '));
   const src = rest.join(' ');
@@ -245,5 +359,5 @@ function splitAssign(s) {
   return [s.trim(), ''];
 }
 
-export { parse, lineNode, attrList, selector, memberTags, hookNode, splitAssign, IDENT, ID, IDC, escRe, isName,
-  nameError, setter, RAW_BODY, isState };
+export { parse, lineNode, attrList, selector, memberTags, polyTags, JSX_TAG, hookNode, splitAssign,
+  IDENT, ID, IDC, escRe, isName, nameError, setter, RAW_BODY, isState };

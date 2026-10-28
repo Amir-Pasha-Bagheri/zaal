@@ -5,7 +5,7 @@
 
 export { tokens } from './lex.mjs';
 export { here, fail, located, inFile } from './diagnostics.mjs';
-export { parse, lineNode, attrList, selector, memberTags, hookNode, splitAssign,
+export { parse, lineNode, attrList, selector, memberTags, polyTags, JSX_TAG, hookNode, splitAssign,
   IDENT, ID, IDC, escRe, isName, nameError, setter, RAW_BODY } from './parse.mjs';
 export { EV, ALIAS, tmpl, textParts, interp, splitStmts, rewrite, stmts, fnBody, handler, unbrace,
   attrParts } from './expr.mjs';

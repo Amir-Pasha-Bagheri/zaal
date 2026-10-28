@@ -10,5 +10,11 @@
   "i { motion } from framer-motion\nC A\n  motion.div.sheet animate={opacity:1}\n    p \"x\"\n",
   "C A p:rest\n  input ...rest tabindex=0 readonly\n",
   "C A p:a\n  {a}\n",
-  "C A\n  my-widget.big text=\"x\"\n"
+  "C A\n  my-widget.big text=\"x\"\n",
+  "C A p:Tag p:rows\n  {Tag} c=\"row\" ...rest\n    *rows as r k=r.id\n      {Tag} \"{r.t}\"\n",
+  "C A p:big p:rows p:f\n  .card as={big ? \"section\" : \"div\"}\n    \"one\"\n    \"two\"\n  *rows as r k=r.id\n    {f(r, null, 1)} c=\"x\" \"{r.t}\"\n",
+  "C A p:as\n  {as}\n    slot head\n      p \"h\"\n    \"text\"\n    p \"a < b\"\n",
+  "C A s:as=\"div\"\n  .nav as=Link to=\"/\" \"home\"\n  button @click=as=\"section\" \"swap\"\n  {as} class=\"x\" tabindex=0 \"hi\"\n",
+  "C A s:open=false\n  button @click=open=true \"open\"\n  ?open\n    portal\n      .scrim @click=open=false\n        .card @click=e.stopPropagation()\n          h2 \"hi\"\n          {children}\n",
+  "C A p:rows p:to\n  main\n    portal {to}\n      p \"a < b\"\n    *rows as r k=r.id\n      portal \"#overlay\"\n        p \"{r.t}\"\n"
 ]

@@ -6,10 +6,27 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { generate } from './helpers/generate.mjs';
 import { diffAvailable, differs, renderBoth, report, cleanupDiff } from './helpers/differential.mjs';
+import { compile } from '../zaal.mjs';
 
 after(cleanupDiff);
 const skip = diffAvailable ? false : 'esbuild/react are devDependencies — run npm install';
 const OPTS = { main: 'App' };
+
+// `differs` reads a source both backends reject as "not a difference", which is right for a
+// hand-written case and wrong for a generated one: a generator that emits an invalid program
+// quietly stops testing anything. Nothing else would say so.
+test('every generated program compiles', () => {
+  const seeds = Number(process.env.ZAAL_DIFF_SEEDS ?? 300);
+  const bad = [];
+  for (let seed = 1; seed <= seeds; seed++) {
+    const src = generate(seed);
+    for (const target of ['jsx', 'esm']) {
+      try { compile(src, target, OPTS); } catch (e) { bad.push(`seed ${seed} (${target}): ${e.message}`); }
+    }
+    if (bad.length >= 3) break;
+  }
+  assert.deepEqual(bad, [], bad.join('\n'));
+});
 
 test('generated programs render identically through both backends', { skip }, async () => {
   const seeds = Number(process.env.ZAAL_DIFF_SEEDS ?? 300);

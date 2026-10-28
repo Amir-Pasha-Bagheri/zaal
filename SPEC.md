@@ -102,6 +102,11 @@ A dotted tag is a **member** of something the file imports when the dot can't be
 (the tag comes from the kit, so markup never repeats it). An unknown `%name` is a build error;
 a plain `.class` with no kit entry is a build warning.
 
+A **dynamic tag** is an expression where the tag goes: `{Tag} c="row" "hi"` renders
+`<Tag className="row">hi</Tag>`, whatever `Tag` holds. A bare `{expr}` line is still an
+expression child — that is how `{children}` works — so a dynamic tag is one that carries an
+attribute, inline text or children; an element with none of those is `div as={Tag}`.
+
 Attributes:
 - `k="str"` → string literal, and it interpolates like text: `title="{n} items"`
 - `k=expr` → `{expr}`; bare `k` → boolean prop
@@ -117,6 +122,12 @@ Attributes:
 - `@click=`, `@input=`, `@change=`, `@submit=`, `@key=`… → `onClick` etc. A DOM event gets
   React's spelling, whatever case you write (`@keyup` → `onKeyUp`, `@dblclick` → `onDoubleClick`);
   any other name is a callback prop (`@pick` → `onPick`)
+- `as=` names the **tag**, not a prop: `.card as=section` → `<section className="card">`, and
+  `%btn as=a` keeps the kit's classes on an `<a>`. Case decides a bare value, as it does
+  everywhere else: `as=section` is the tag, `as=Link` is the component (and in scope on sight,
+  like any other), and a variable holding either is `as={tag}` — a dynamic tag. On a component,
+  a member tag or a tag that is already dynamic, `as` stays an **ordinary prop**: that is the
+  name styled-components, Radix and most of npm read it under
 - an attribute set twice is an error — except classes, which are joined: `%card c="wide"` is
   `className="card wide"`, and `%card c=extra` is `` className={`card ${extra}`} ``
 
@@ -134,7 +145,8 @@ Panel title="About"
 ```
 
 `{expr}` on its own line is an **expression child** — that is how a wrapper renders what it
-was given:
+was given (with an attribute or children after it, the same head is a dynamic tag instead; see
+**Elements**):
 ```
 C Panel p:title
   %card
@@ -155,14 +167,40 @@ Panel title="About"
 it like any other prop: `p:actions=null` + `{actions}`. A `slot` on a plain element, or an
 empty one, is a build error.
 
+To render markup **somewhere else in the document** — a modal, a tooltip, a toast, anything an
+ancestor's `overflow`, `transform` or `z-index` would otherwise clip — use `portal`:
+```
+C Dialog p:title p:onClose
+  portal
+    .scrim @click=onClose
+      %card @click=e.stopPropagation()
+        h2 "{title}"
+        {children}
+```
+→ `createPortal(<div className="scrim" …>…</div>, document.body)`, with the import written for
+you (`createPortal` is react-dom's, not react's). The target is optional and takes three forms:
+
+| | |
+|---|---|
+| `portal` | `document.body` — the one node every page has |
+| `portal "#modal-root"` | a CSS selector, read with `document.querySelector` |
+| `portal host.current` | any expression — a `ref`, a prop, `{cond ? a : b}` |
+
+A portal is ordinary markup: it may be a component's root, sit among siblings, hold a `?` or a
+`*`, be passed as a `slot`, and a `*` line keys it (`createPortal`'s third argument). It needs
+markup under it, like a branch does. One caveat about the selector form, which is React's and
+not Zaal's: it is read while the component renders, so the node has to exist already — a
+`#modal-root` belongs in `index.html`, and a target the same tree is about to render is not
+there yet (React says `Target container is not a DOM element`).
+
 A component may have **several root lines**; they are wrapped in a fragment for you (and a
 `?`/`*` may be the root too).
 
 **One block per file is the default export** — the one named after the file. Extra `C`/`S`
 blocks in the same file become named exports, reachable with `i { Row } from ./Table`.
 
-`i`, `js`, `slot`, `ret`, `fx`, `memo`, `cb`, `ref`, `ctx` and `use` are reserved heads, so no
-element may be named one. `i` is the exception that keeps `<i>`: `i "text"` and `i c="..."` are the
+`i`, `js`, `slot`, `portal`, `provide`, `ret`, `fx`, `memo`, `cb`, `ref`, `ctx` and `use` are
+reserved heads, so no element may be named one. `i` is the exception that keeps `<i>`: `i "text"` and `i c="..."` are the
 element, `i X ./X` is an import.
 
 ## Handlers (`@ev=`)
@@ -349,8 +387,55 @@ error:
 A Demo
   store Theme Todos
 ```
+## Scoped state (`provide Name = <value>`)
+A store is one provider around the whole app, so every component on the page reads the same
+value. The other half is a value that belongs to **one instance** of a component — the open tab
+of *this* `<Tabs>`, the row *this* `<Row>` renders — handed to its own descendants however deep
+they sit, with no prop threaded through the markup in between. `provide` is a markup line that
+declares that context and fills it:
+
+```
+C Tabs p:labels s:open=0
+  memo tabs = { open, setOpen }
+  provide Tabs = tabs
+    %tablist
+      *labels as label
+        %tab @click=setOpen(i) "{label}"
+    {children}
+
+C Tab p:at
+  use { open } = Tabs
+  ?open == at
+    {children}
+```
+```jsx
+export const TabsContext = createContext(null);
+export function useTabs() { … }                       // throws outside a provider
+
+<TabsContext.Provider value={tabs}>…</TabsContext.Provider>
+```
+
+The name is capitalised, like a block's: it becomes `<Name>Context` and `use<Name>()`, both
+exported, so a `use { … } = Name` line in **any** file reads it with the import written for you
+— exactly how a store is read, because from a consumer the two are the same thing. The values
+are read-only there, as a store's are.
+
+One `createContext` per name per file, however many lines hand it out, so two components in one
+file may provide the same context and a `?` may provide it from either arm. A `provide` is
+ordinary markup otherwise: a component's root, a sibling, inside a `?` or a `*` (which keys it),
+nested inside another. It needs markup under it, like a branch does.
+
+The value is the expression as written — **no `useMemo` is added for you**. A fresh object every
+render re-renders every consumer, so give it a `memo` line (which already infers its own
+dependencies) when that matters; hoisting one out of a `provide` would be a conditional hook the
+moment the line sits under a `?`.
+
+Two things that are errors rather than surprises: a second file providing the same name (two
+`createContext` calls are two different contexts), and a store reading one — an `S` provider
+wraps the app from outside every component, so it is outside every `provide` too.
+
 `ctx name = SomeContext` stays the way to read a context you didn't declare — one from a
-package, say.
+package, say, or `<Name>Context` itself.
 
 ## Control flow (child lines)
 ```
@@ -534,6 +619,11 @@ unstyled markup.
 |---|---|
 | `jsx` | real JSX in `application/` — the deliverable, bundled by Vite like any React project |
 | `esm` | `createElement` modules in `.zaal-dev/` — **no build, no npm install**; React comes from an esm.sh import map |
+
+JSX can only *name* a tag, so a dynamic tag the `jsx` backend cannot write as `<Tag>` or
+`<icons.Star>` — a lower-case name (`{as}`), a ternary, a call — is written as a
+`createElement` call there, exactly as the `const Tag = as` of a hand-written polymorphic
+component would be. The page is the same either way.
 
 Both write the same shape: `index.html` at the root, modules under its `src/`. `application/` is
 what a build produces and what you commit; `.zaal-dev/` is a preview, rewritten freely and safe

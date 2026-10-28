@@ -1,5 +1,5 @@
 import { createElement as h, Fragment as F } from 'react';
 
-export default function Panel({ title, actions = null, children }) {
-  return h("section", { "className": "card" }, h("h2", null, title), actions ? h("nav", { "className": "nav" }, actions) : null, children);
+export default function Panel({ title, actions = null, as = "section", children }) {
+  return h(as, { "className": "card" }, h("h2", null, title), actions ? h("nav", { "className": "nav" }, actions) : null, children);
 }

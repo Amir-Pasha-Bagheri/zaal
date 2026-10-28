@@ -1,0 +1,6 @@
+import { createElement as h, Fragment as F } from 'react';
+import { createPortal } from 'react-dom';
+
+export default function Dialog({ title, onClose, children }) {
+  return createPortal(h("div", { "className": "scrim", "onClick": onClose }, h("section", { "className": "card dialog", "onClick": (e) => e.stopPropagation() }, h("h2", null, title), children, h("button", { "className": "btn primary", "onClick": onClose }, "close"))), document.body);
+}

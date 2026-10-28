@@ -1,10 +1,22 @@
 i Nav ../components/Nav
 i Panel ../components/Panel
+i Tabs ../components/Tabs
+i { Tab } from ../components/Tabs
 C About
   %page
     Nav
-    Panel title="About"
+    Panel title="About" as="article"
       slot actions
         Link to="/" "back home"
       p "Components live in .zaal files; the look lives in ui.zaal."
       p "Nest by indentation; \{children\} renders whatever the caller nested."
+      p "This panel is an <article>: `as=` names the tag."
+    Panel title="How it is built"
+      Tabs labels={["Blocks", "Markup", "Design"]}
+        Tab at=0
+          p "`C` is a component, `S` a store, `H` a hook. One block per file is the default export."
+        Tab at=1
+          p "Indentation is nesting. `?` branches, `*` maps, `portal` renders elsewhere."
+        Tab at=2
+          p "`ui.zaal` is the whole look: tokens, element defaults and a kit of named recipes."
+      %hint "The tabs above are a `provide` context — each <Tabs> has its own open tab."

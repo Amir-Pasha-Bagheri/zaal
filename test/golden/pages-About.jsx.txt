@@ -1,14 +1,31 @@
 import Nav from '../components/Nav.jsx';
 import Panel from '../components/Panel.jsx';
+import Tabs from '../components/Tabs.jsx';
+import { Tab } from '../components/Tabs.jsx';
 import { Link } from '../router.jsx';
 
 export default function About() {
   return (
     <main className="page">
       <Nav />
-      <Panel title="About" actions={<Link to="/">back home</Link>}>
+      <Panel title="About" as="article" actions={<Link to="/">back home</Link>}>
         <p>Components live in .zaal files; the look lives in ui.zaal.</p>
         <p>Nest by indentation; {'{'}children{'}'} renders whatever the caller nested.</p>
+        <p>This panel is an {'<'}article>: `as=` names the tag.</p>
+      </Panel>
+      <Panel title="How it is built">
+        <Tabs labels={["Blocks", "Markup", "Design"]}>
+          <Tab at={0}>
+            <p>`C` is a component, `S` a store, `H` a hook. One block per file is the default export.</p>
+          </Tab>
+          <Tab at={1}>
+            <p>Indentation is nesting. `?` branches, `*` maps, `portal` renders elsewhere.</p>
+          </Tab>
+          <Tab at={2}>
+            <p>`ui.zaal` is the whole look: tokens, element defaults and a kit of named recipes.</p>
+          </Tab>
+        </Tabs>
+        <p className="hint">The tabs above are a `provide` context — each {'<'}Tabs> has its own open tab.</p>
       </Panel>
     </main>
   );

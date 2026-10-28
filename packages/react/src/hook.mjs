@@ -8,7 +8,8 @@ import { hookCode, lineText, taken, setterClash, uniqueNames, laterNames,
 // A hook's parameters are positional, unlike a component's props: `useCounter(10)` is how React
 // code calls one, and `p:` lines keep their source order to match.
 function hookdef(node, target, opts = {}) {
-  const ctx = { props: [], state: [], globals: new Set(), needs: new Set(), spread: new Map(),
+  const ctx = { props: [], state: [], globals: new Set(), needs: new Set(), ctxs: opts.ctxs || new Map(),
+    ctxNeeds: new Set(), spread: new Map(),
     scope: new Set(opts.scope || []), stores: opts.stores || new Map() };
   for (const p of node.parts) {
     if (p.startsWith('p:')) {

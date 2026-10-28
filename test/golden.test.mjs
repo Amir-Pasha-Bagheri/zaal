@@ -23,7 +23,7 @@ const module_ = (path, target) => {
   const src = readFileSync(join(example, 'zaal', `${path}.zaal`), 'utf8');
   const slash = path.lastIndexOf('/');
   return compile(src, target, { ui: p.ui, stores: p.stores, comps: p.comps, hooks: p.hooks,
-    pins: p.app.pins, main: path.slice(slash + 1), dir: path.slice(0, slash) });
+    ctxs: p.ctxs, pins: p.app.pins, main: path.slice(slash + 1), dir: path.slice(0, slash) });
 };
 
 for (const file of readdirSync(dir)) {

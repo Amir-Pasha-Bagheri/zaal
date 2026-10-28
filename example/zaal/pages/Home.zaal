@@ -1,10 +1,16 @@
 i Nav ../components/Nav
 i Counter ../components/Counter
 i TodoList ../components/TodoList
-C Home
+i Dialog ../components/Dialog
+C Home s:asking=false
   use { left } = Todos
   %page
     Nav
     h1 "Built with Zaal — {left} open"
     Counter label="Clicks" step=2
     TodoList title="Todo"
+    %btn @click=asking=true "about this page"
+    ?asking
+      Dialog title="About this page" @close=asking=false
+        p "Everything here is one .zaal file per component."
+        p "This dialog is a `portal`: it renders on document.body."

@@ -15,7 +15,8 @@ function store(node, target, opts = {}) {
     fail(node, `S ${node.name}: \`persist=${key}\` is not a storage key`
       + ` — letters, digits, \`:\`, \`.\`, \`-\`, \`_\` and \`/\``);
   }
-  const ctx = { props: [], state: [], globals: new Set(), needs: new Set(),
+  const ctx = { props: [], state: [], globals: new Set(), needs: new Set(), ctxs: opts.ctxs || new Map(),
+    ctxNeeds: new Set(), store: true,
     scope: new Set(opts.scope || []), stores: opts.stores || new Map() };
   for (const p of node.parts) {
     if (!p.startsWith('s:')) {

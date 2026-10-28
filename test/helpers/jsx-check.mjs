@@ -51,7 +51,12 @@ function tags(code, bare) {
     const start = j;
     while (j < bare.length && /[\w$.:-]/.test(bare[j])) j++;
     const name = code.slice(start, j);
-    if (!close && !/^[A-Za-z_$]/.test(name || '')) continue;    // `a < b`, not a tag
+    // `<>` and `</>` are fragments — a tag whose name is empty, with the `>` right there. A `<`
+    // with no name and no `>` after it is `a < b`. Without this an opening `<>` was not a tag at
+    // all, so the text scan below read everything from the previous component's last tag up to
+    // it as children, and reported the `<` it had just skipped.
+    if (!close && !name && bare[j] !== '>') continue;           // `a < b`, not a fragment
+    if (!close && name && !/^[A-Za-z_$]/.test(name)) continue;  // nor a tag
     let depth = 0;
     for (; j < bare.length; j++) {
       if ('{(['.includes(bare[j])) depth++;
@@ -88,13 +93,12 @@ export function checkJsx(code, where = 'module') {
   const stack = [];
   for (const t of tags(code, bare)) {
     if (t.close) {
-      if (!t.name) continue;                                    // `</>` closes a fragment
-      const open = stack.pop();
+      const open = stack.pop();                                 // `</>` closes a fragment
       if (open !== t.name) problems.push(`</${t.name}> closes <${open ?? 'nothing'}>`);
       continue;
     }
-    if (!t.name) continue;                                      // `<>`
     if (!t.self) stack.push(t.name);
+    if (!t.name) continue;                                      // `<>` carries no attributes
     const keys = [...t.attrs.matchAll(/(?:^|\s)([\w$:-]+)=/g)].map(a => a[1]);
     const twice = keys.find((k, i) => keys.indexOf(k) !== i);
     if (twice) problems.push(`<${t.name}> sets ${twice} twice`);

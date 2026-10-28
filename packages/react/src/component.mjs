@@ -40,6 +40,7 @@ function setterClash(node, state, props = []) {
 
 function component(node, target, opts = {}) {
   const ctx = { props: [], state: [], globals: new Set(), needs: new Set(), spread: new Map(),
+    ctxs: opts.ctxs || new Map(), ctxNeeds: new Set(),
     scope: new Set(opts.scope || []), stores: opts.stores || new Map() };
   for (const p of node.parts) {
     if (p.startsWith('p:')) {
@@ -109,6 +110,10 @@ const interpOf = s => [...s.matchAll(/\\[{}]|\{([^}]+)\}/g)].map(m => m[1]).filt
 function codeOf(n) {
   const out = [];
   if (n.kind === 'expr') out.push(n.code);
+  if (n.kind === 'el' && n.dyn) out.push(n.tag);          // `{Tag}` — the tag is an expression
+  if (n.kind === 'portal' && n.to) out.push(n.target);    // `portal box.current` — so is a target
+  // `provide Tabs = { active }` — the value is code, read the way an attribute value is.
+  if (n.kind === 'provide') out.push(...(n.expr.startsWith('"') ? interpOf(n.expr.slice(1, -1)) : [n.expr]));
   if (n.kind === 'text') out.push(...interpOf(n.value));
   if (n.kind === 'if') out.push(n.test);
   if (n.kind === 'map') out.push(n.list, n.key || '');
@@ -254,10 +259,21 @@ function hookCode(ctx, n, reactive, declared = [], later = []) {
     notYet(n, n.expr, later);
     if (!n.name) return [`  ${interp(n.expr)};`];      // `use useLayoutEffect(…)` — binds nothing
     const ids = bindNames(n.name);
-    // `use { items, add } = Cart` — a bare store name reads that store, imported for you.
+    // `use { items, add } = Cart` — a bare capitalized name reads a context, imported for you:
+    // an `S` store, or one a `provide` line hands out. Both are read the same way, because from
+    // here they are the same thing — a value some provider above this component put there.
     if (/^\p{Lu}[\p{L}\p{N}_$]*$/u.test(n.expr)) {
-      if (!ctx.stores.has(n.expr)) fail(n, `use …= ${n.expr}: no store \`S ${n.expr}\` in this app`);
-      ctx.needs.add(n.expr);
+      const store = ctx.stores.has(n.expr), given = ctx.ctxs?.has(n.expr);
+      if (!store && !given) {
+        fail(n, `use …= ${n.expr}: no store \`S ${n.expr}\` and no \`provide ${n.expr}\` in this app`);
+      }
+      // A store's provider is mounted around the whole app, outside every component — so it is
+      // outside any `provide` too, and the hook would throw on the first render.
+      if (!store && ctx.store) {
+        fail(n, `use …= ${n.expr}: \`provide ${n.expr}\` is inside a component, and a store's`
+          + ` provider wraps the whole app from outside it — a store cannot read one`);
+      }
+      (store ? ctx.needs : ctx.ctxNeeds).add(n.expr);
       for (const id of ids) { bind(id); ctx.globals.add(id); }
       return [`  const ${n.name} = use${n.expr}();`];
     }
@@ -299,7 +315,7 @@ const BOUNDARY_OWN = { error: 'the error the boundary caught', reset: 'the bound
 // the markup is the fallback, with `error` and `reset` in scope.
 function boundary(node, target, opts = {}) {
   const ctx = { props: [], state: [], globals: new Set(), needs: new Set(), spread: new Map(),
-    stores: opts.stores || new Map() };
+    ctxs: opts.ctxs || new Map(), ctxNeeds: new Set(), stores: opts.stores || new Map() };
   for (const p of node.parts) {
     if (p === 'catch') continue;
     if (p.startsWith('s:')) fail(node, `C ${node.name} catch: an error boundary is a class, so it`

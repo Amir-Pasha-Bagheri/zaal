@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import Nav from '../components/Nav.jsx';
 import Counter from '../components/Counter.jsx';
 import TodoList from '../components/TodoList.jsx';
+import Dialog from '../components/Dialog.jsx';
 import { useTodos } from '../stores/Todos.jsx';
 
 export default function Home() {
+  const [asking, setAsking] = useState(false);
   const { left } = useTodos();
   return (
     <main className="page">
@@ -11,6 +14,13 @@ export default function Home() {
       <h1>Built with Zaal — {left} open</h1>
       <Counter label="Clicks" step={2} />
       <TodoList title="Todo" />
+      <button className="btn" onClick={() => setAsking(true)}>about this page</button>
+      {asking ? (
+        <Dialog title="About this page" onClose={() => setAsking(false)}>
+          <p>Everything here is one .zaal file per component.</p>
+          <p>This dialog is a `portal`: it renders on document.body.</p>
+        </Dialog>
+      ) : null}
     </main>
   );
 }
